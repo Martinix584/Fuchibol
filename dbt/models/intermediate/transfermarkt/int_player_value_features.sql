@@ -21,6 +21,7 @@ season_value as (
         on valuations.player_id = stats.player_id
         and valuations.valuation_date
             between date_sub(stats.season_end_date, interval 200 day) and stats.season_end_date
+    where true  -- BigQuery exigía WHERE/GROUP BY/HAVING junto a QUALIFY
     qualify row_number() over (
         partition by stats.player_id, stats.season order by valuations.valuation_date desc
     ) = 1

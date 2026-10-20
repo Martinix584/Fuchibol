@@ -1,9 +1,9 @@
 """Ingesta de StatsBomb Open Data: partidos, eventos y alineaciones.
 
 Flujo:
-  1. sync_matches(): baja competitions.json y los partidos del alcance elegido, los
-     carga a BigQuery (WRITE_TRUNCATE, son chicos) y arma el plan de partidos nuevos o
-     actualizados comparando su `last_updated` contra un manifest en GCS.
+  1. sync_matches(): baja competitions.json (WRITE_TRUNCATE) y los partidos del alcance
+     elegido (WRITE_APPEND: cambiar de alcance no borra lo ya cargado), y arma el plan de
+     partidos nuevos o actualizados comparando su `last_updated` contra un manifest en GCS.
   2. ingest_batch(): por cada competición-temporada del plan, baja eventos y alineaciones
      en paralelo, los escribe como NDJSON.gz en GCS y los agrega (WRITE_APPEND) a BigQuery.
      El staging de dbt se queda con la última ingesta de cada partido, así que reintentar
@@ -204,7 +204,7 @@ def sync_matches(scope: str | None = None, force: bool = False, ingest_date: str
             f"{config.GCS_STATSBOMB_PREFIX}/matches/ingest_date={ingest_date}/matches.ndjson.gz",
             "matches",
             "statsbomb_matches",
-            append=False,
+            append=True,  # si cambia el alcance, los partidos ya cargados no se pierden
         ),
     ]
     manifest = {} if force else storage.read_manifest(config.STATSBOMB_MANIFEST_BLOB)

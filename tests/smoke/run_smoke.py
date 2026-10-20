@@ -25,7 +25,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import duckdb
-import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -37,16 +36,15 @@ from synthetic_transfermarkt import build as build_transfermarkt  # noqa: E402
 from ingestion import statsbomb  # noqa: E402
 
 SCHEMAS = ROOT / "ingestion" / "schemas"
-GITHUB = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"
 
 
 def reader(local_dir: str | None):
+    """Lee de una carpeta local o de GitHub (con los mismos reintentos que la ingesta)."""
+
     def read(path: str):
         if local_dir:
             return json.loads((Path(local_dir) / path).read_text())
-        resp = requests.get(f"{GITHUB}/{path}", timeout=120)
-        resp.raise_for_status()
-        return resp.json()
+        return statsbomb.fetch_json(path)
 
     return read
 
@@ -103,15 +101,19 @@ def load_statsbomb(con, read, competition: int, season: int, n_matches: int | No
         for p in row["lineup"]:
             if p["positions"]:
                 key = p["player_id"]
-                seen.setdefault(
+                player = seen.setdefault(
                     key,
                     {
                         "sb_player_id": key,
-                        "display_name": p["player_nickname"] or p["player_name"],
-                        "country": p["country"]["name"],
+                        "display_name": p["player_name"],
+                        "country": (p.get("country") or {}).get("name"),
                         "n": 0,
                     },
-                )["n"] += 1
+                )
+                player["n"] += 1
+                # misma regla que int_player_id_map: el apodo, si aparece en algún partido
+                if p["player_nickname"]:
+                    player["display_name"] = p["player_nickname"]
     return sorted(seen.values(), key=lambda p: -p["n"])[:40]
 
 
@@ -223,17 +225,18 @@ def main() -> int:
             summary["failures"].append(f"{node['name']} ({severity}): {failures} filas")
 
     # el cruce de identidades tiene que dar lo esperado
+    # (por id: un mismo jugador puede traer apodos distintos según el partido)
     mapped = dict(
-        con.execute("select sb_display_name, tm_player_id from intermediate.int_player_id_map").fetchall()
+        con.execute("select sb_player_id, tm_player_id from intermediate.int_player_id_map").fetchall()
     )
     overrides = {
         int(r["sb_player_id"]) for r in csv.DictReader(open(dbt_dir / "seeds" / "player_id_overrides.csv"))
     }
     wrong = [
-        (p["display_name"], expected_map.get(p["display_name"]), mapped.get(p["display_name"]))
+        (p["display_name"], expected_map.get(p["display_name"]), mapped.get(p["sb_player_id"]))
         for p in sb_players
         if p["sb_player_id"] not in overrides
-        and mapped.get(p["display_name"]) != expected_map.get(p["display_name"])
+        and mapped.get(p["sb_player_id"]) != expected_map.get(p["display_name"])
     ]
     summary["id_map"] = {"sb_players": len(sb_players), "mapped": len(mapped), "wrong": wrong}
     summary["seconds"] = round(time.monotonic() - started, 1)

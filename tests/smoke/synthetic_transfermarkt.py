@@ -89,12 +89,15 @@ def build(con, sb_players: list[dict], seed: int = 7) -> dict:
         add(f"Jugador {i + 1}", "Argentina" if i % 2 else "England", clubs[i % 6][0])
     for p in sb_players:
         expected[p["display_name"]] = add(p["display_name"], p["country"], clubs[pid % 6][0])
+    # Las trampas usan jugadores con nacionalidad (en datos viejos StatsBomb no la trae, y sin
+    # nacionalidad un homónimo es ambiguo de verdad)
+    with_country = [p for p in sb_players if p["country"]]
     # trampa 1: homónimo con otra nacionalidad (no debe romper el cruce por nacionalidad)
-    if sb_players:
-        add(sb_players[0]["display_name"], "Narnia", 1)
+    if with_country:
+        add(with_country[0]["display_name"], "Narnia", 1)
     # trampa 2: dos jugadores iguales de la misma nacionalidad -> ambiguo, no se cruza
-    if len(sb_players) > 1:
-        dup = sb_players[1]
+    if len(with_country) > 1:
+        dup = with_country[1]
         add(dup["display_name"], dup["country"], 2)
         expected[dup["display_name"]] = None
 

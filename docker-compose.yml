@@ -19,6 +19,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     command: standalone
+    # Mismo uid que tu usuario: así dbt puede escribir target/ y logs/ en la carpeta montada
+    # (en Linux, poné AIRFLOW_UID=$(id -u) en .env)
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       postgres:
         condition: service_healthy

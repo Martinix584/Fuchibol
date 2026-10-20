@@ -9,7 +9,7 @@ con dos fuentes públicas:
   jugadores, 1,9 millones de apariciones, 650.000 valuaciones y 175.000 transferencias.
 - **StatsBomb Open Data** ([open-data](https://github.com/statsbomb/open-data)): **datos de eventos del mismo tipo que
   Opta**, es decir cada pase, tiro, conducción y presión con coordenadas y xG. Mundiales, Euros, Copa América, las 5
-  grandes ligas 2015/16, la Bundesliga invicta del Leverkusen y todo Messi en La Liga.
+  grandes ligas 2015/16 (cuatro completas), la Bundesliga invicta del Leverkusen y todo Messi en La Liga.
 
 > **¿Y Opta?** Opta (Stats Perform) es un producto pago y su licencia no permite publicarlo en un repo. StatsBomb Open
 > Data es el equivalente gratuito y abierto que usa la comunidad de análisis: mismo tipo de datos y mismo nivel de
@@ -136,6 +136,12 @@ El smoke test encontró cuatro errores reales antes de llegar a BigQuery: una va
 en el nombre del dataset de origen, una columna ambigua en un join, una macro `per_90` sin paréntesis
 (`npxg + xa * 90`) y minutos duplicados por tramos superpuestos en el origen.
 
+Además se corrió con partidos de otras épocas y competiciones (Mundial 1970, La Liga 2004/05, Premier 2015/16,
+Bundesliga 2023/24, Copa Africana 2023, Champions 2018/19): pasan los 114 tests. Eso destapó dos casos más que
+ya están resueltos: tramos repetidos de forma idéntica, que con empates podían contar minutos dos veces (ahora lo
+cubre un unit test), y coordenadas apenas afuera de la cancha. Aparte, se validaron los tipos del esquema de
+BigQuery contra 606.713 eventos reales de las 67 competiciones-temporada masculinas.
+
 ## Métricas del pipeline en BigQuery
 
 Cada corrida guarda filas, bytes y tiempos por tabla en `ops.pipeline_runs`, y el resultado de cada modelo y test
@@ -182,8 +188,8 @@ de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá:
 
 - **StatsBomb:** datos de [StatsBomb Open Data](https://github.com/statsbomb/open-data). Sus términos piden citarlos
   como fuente y usar su logo en lo que se publique. Coordenadas en una cancha de 120 × 80 con el ataque siempre
-  hacia la derecha. El open data cubre torneos y temporadas puntuales, no ligas enteras actuales; en las ligas de
-  Messi solo están los partidos del Barcelona.
+  hacia la derecha. El open data cubre torneos y temporadas puntuales, no ligas enteras actuales: en La Liga de
+  Messi están solo los partidos del Barcelona (salvo 2015/16, completa) y de la Bundesliga 2015/16 hay 34 partidos.
 - **Transfermarkt:** los valores de mercado son **estimaciones** de su comunidad, no precios. `transfer_fee = 0`
   mezcla pases libres y préstamos; `null` es desconocido. Según el proyecto, **los datos llegan hasta el 6 de julio
   de 2026** y las actualizaciones están pausadas: el DAG lo detecta y no reprocesa nada hasta que vuelvan.
@@ -219,11 +225,11 @@ mkdir -p keys && gcloud iam service-accounts keys create keys/sa.json --iam-acco
 cp .env.example .env && set -a && source .env && set +a     # completá proyecto y bucket
 gcloud auth application-default login
 
-make extract        # primera carga de las dos fuentes (STATSBOMB_SCOPE=core: ~350 partidos)
+make extract        # primera carga de las dos fuentes (STATSBOMB_SCOPE=core: 348 partidos)
 make dbt-build      # seeds, modelos, snapshot, data tests y unit tests
 make dbt-train      # BigQuery ML
 make dbt-docs       # documentación y linaje en http://localhost:8081
-make airflow-up     # Airflow en http://localhost:8080
+make airflow-up     # Airflow en http://localhost:8080 (en Linux, antes: AIRFLOW_UID=$(id -u) en .env)
 ```
 
 > El **sandbox** de BigQuery (sin tarjeta) no alcanza: no permite `MERGE`, que usan los snapshots. Con la

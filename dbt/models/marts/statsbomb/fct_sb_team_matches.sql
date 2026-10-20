@@ -7,7 +7,10 @@
 #}
 with matches as (
 
-    select * from {{ ref('stg_sb_matches') }}
+    {# Solo partidos con eventos cargados: uno listado pero todavía sin ingerir daría xG 0 #}
+    select *
+    from {{ ref('stg_sb_matches') }}
+    where match_id in (select match_id from {{ ref('int_sb_match_periods') }})
 
 ),
 

@@ -55,9 +55,9 @@
     {% set sql %}
         create or replace model {{ market_value_model() }}
         options (
-            model_type = 'boosted_tree_regressor',
+            model_type = 'BOOSTED_TREE_REGRESSOR',
             input_label_cols = ['log_market_value'],
-            data_split_method = 'random',
+            data_split_method = 'RANDOM',
             data_split_eval_fraction = 0.2,
             max_iterations = 100,
             early_stop = true,
