@@ -1,0 +1,44 @@
+# Airflow local: Postgres + "airflow standalone" (api-server, scheduler, dag-processor y triggerer en un contenedor).
+# UI en http://localhost:8080 (sin login: SIMPLE_AUTH_MANAGER_ALL_ADMINS, solo para desarrollo local).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+
+  airflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: standalone
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+      GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/sa.json
+      DBT_TARGET: prod
+      DBT_PROFILES_DIR: /opt/airflow/dbt
+      PYTHONPATH: /opt/airflow
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./ingestion:/opt/airflow/ingestion
+      - ./dbt:/opt/airflow/dbt
+      - ./keys:/opt/airflow/keys:ro
+
+volumes:
+  postgres-data:

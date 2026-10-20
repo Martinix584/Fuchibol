@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: dim_players
+    description: Un jugador por fila con perfil, valor y totales de carrera (goles, asistencias, por 90).
+    columns:
+      - name: player_id
+        data_tests: [unique, not_null]
+      - name: goals_per_game
+        description: Goles por partido jugado en las competiciones cubiertas.
+        data_tests: [non_negative]
+      - name: goals_per_90
+        description: Goles cada 90 minutos.
+
+  - name: dim_clubs
+    description: Clubes con su liga.
+    columns:
+      - name: club_id
+        data_tests: [unique, not_null]
+
+  - name: mart_player_seasons
+    description: Stats de cada jugador por temporada (la base para comparar jugadores en Power BI).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, season]
+
+  - name: mart_transfer_roi
+    description: ¿Valió lo que se pagó? Fichajes pagos con su veredicto.
+    columns:
+      - name: transfer_id
+        data_tests: [unique, not_null]
+      - name: transfer_fee_eur
+        data_tests: [not_null, non_negative]
+      - name: verdict
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [Acierto, Cumplió, Fracaso, Muy reciente, Sin datos]
+
+  - name: mart_club_transfer_balance
+    description: Gasto, ingresos, balance y tasa de aciertos por club.
+    columns:
+      - name: club_id
+        data_tests: [unique, not_null]
+      - name: hit_rate
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: mart_argentina_exports
+    description: Jugadores argentinos vendidos desde la liga argentina al exterior.
+    columns:
+      - name: transfer_id
+        data_tests: [unique, not_null]

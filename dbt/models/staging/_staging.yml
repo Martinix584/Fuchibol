@@ -1,0 +1,117 @@
+version: 2
+
+models:
+  - name: stg_competitions
+    description: Ligas y torneos (una fila por competición).
+    columns:
+      - name: competition_id
+        data_tests: [unique, not_null]
+      - name: competition_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [domestic_league, domestic_cup, international_cup, national_team_competition, other]
+
+  - name: stg_clubs
+    description: Clubes de las ligas cubiertas por el dataset.
+    columns:
+      - name: club_id
+        data_tests: [unique, not_null]
+      - name: domestic_competition_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_competitions')
+                field: competition_id
+              config:
+                severity: warn
+
+  - name: stg_players
+    description: Perfil de cada jugador con su valor de mercado actual y máximo.
+    columns:
+      - name: player_id
+        data_tests: [unique, not_null]
+      - name: player_name
+        data_tests: [not_null]
+      - name: market_value_eur
+        data_tests: [non_negative]
+      - name: height_in_cm
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 140
+                max_value: 220
+              config:
+                severity: warn
+
+  - name: stg_player_valuations
+    description: Historial de valores de mercado (una fila por jugador y fecha de tasación).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, valuation_date]
+          config:
+            severity: warn
+    columns:
+      - name: player_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_players')
+                field: player_id
+      - name: valuation_date
+        data_tests: [not_null]
+      - name: market_value_eur
+        data_tests: [not_null, non_negative]
+
+  - name: stg_transfers
+    description: >
+      Transferencias entre clubes. transfer_fee_eur null = monto desconocido;
+      0 = libre o préstamo.
+    columns:
+      - name: transfer_id
+        data_tests: [unique, not_null]
+      - name: player_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_players')
+                field: player_id
+      - name: transfer_fee_eur
+        data_tests: [non_negative]
+      - name: market_value_at_transfer_eur
+        data_tests: [non_negative]
+
+  - name: stg_games
+    description: Partidos (una fila por partido).
+    columns:
+      - name: game_id
+        data_tests: [unique, not_null]
+      - name: game_date
+        data_tests: [not_null]
+      - name: home_club_goals
+        data_tests: [non_negative]
+
+  - name: stg_appearances
+    description: Una fila por jugador y partido jugado.
+    columns:
+      - name: appearance_id
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_games')
+                field: game_id
+              config:
+                severity: warn
+      - name: minutes_played
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 130
+      - name: goals
+        data_tests: [non_negative]

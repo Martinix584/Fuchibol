@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          ruff check ingestion dags tests scripts
+          ruff format --check ingestion dags tests scripts
+      - name: Tests unitarios
+        run: pytest -q
+      - name: dbt parse (valida SQL, refs y YAML sin conectarse a BigQuery)
+        working-directory: dbt
+        env:
+          DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
+        run: dbt parse --profiles-dir .

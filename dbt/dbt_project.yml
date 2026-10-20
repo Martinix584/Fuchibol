@@ -1,0 +1,44 @@
+name: fuchibol
+version: "1.0.0"
+config-version: 2
+profile: fuchibol
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Minutos mínimos en la temporada para entrenar/predecir el valor de mercado
+  ml_min_minutes: 900
+  # Ventana (días) para medir el rendimiento antes y después de un fichaje
+  transfer_window_days: 365
+
+models:
+  fuchibol:
+    +persist_docs:
+      relation: true
+      columns: true
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
+    ml:
+      +schema: ml
+      +materialized: table
+      +tags: ["ml"]
+
+snapshots:
+  fuchibol:
+    +schema: snapshots
+
+data_tests:
+  fuchibol:
+    +store_failures: false
