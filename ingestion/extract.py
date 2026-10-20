@@ -1,4 +1,4 @@
-"""Extract: baja los CSV de transfermarkt-datasets y los deja en GCS (capa raw).
+"""Extract de Transfermarkt: baja los CSV de transfermarkt-datasets y los deja en GCS (capa raw).
 
 Es incremental a nivel archivo: guarda en GCS un manifest con la huella (ETag /
 Last-Modified / tamaño) de cada archivo y solo vuelve a bajar los que cambiaron.
@@ -20,7 +20,7 @@ from datetime import date
 
 import requests
 
-from ingestion import config
+from ingestion import config, storage
 
 log = logging.getLogger(__name__)
 
@@ -52,25 +52,12 @@ def changed_tables(remote: dict[str, str], manifest: dict[str, str]) -> list[str
     return [t for t, fp in remote.items() if manifest.get(t) != fp]
 
 
-def _bucket():
-    from google.cloud import storage
-
-    return storage.Client(project=config.GCP_PROJECT_ID).bucket(config.GCS_BUCKET)
-
-
 def load_manifest() -> dict[str, str]:
-    blob = _bucket().blob(config.MANIFEST_BLOB)
-    if not blob.exists():
-        return {}
-    return json.loads(blob.download_as_text())
+    return storage.read_manifest(config.MANIFEST_BLOB)
 
 
 def save_manifest(updates: dict[str, str]) -> None:
-    manifest = load_manifest()
-    manifest.update(updates)
-    _bucket().blob(config.MANIFEST_BLOB).upload_from_string(
-        json.dumps(manifest, indent=2), content_type="application/json"
-    )
+    storage.update_manifest(config.MANIFEST_BLOB, updates)
 
 
 def detect_changes(tables: list[str] | None = None, force: bool = False) -> list[str]:
@@ -97,12 +84,11 @@ def extract_table(table: str, ingest_date: str | None = None) -> dict:
         tmp.flush()
         size_bytes = tmp.tell()
 
-        object_name = gcs_object_name(table, ingest_date)
-        _bucket().blob(object_name).upload_from_filename(tmp.name, content_type="application/gzip")
+        uri = storage.upload_file(tmp.name, gcs_object_name(table, ingest_date), "application/gzip")
 
     result = {
         "table": table,
-        "gcs_uri": f"gs://{config.GCS_BUCKET}/{object_name}",
+        "gcs_uri": uri,
         "bytes": size_bytes,
         "fingerprint": fingerprint,
         "extract_seconds": round(time.monotonic() - started, 2),

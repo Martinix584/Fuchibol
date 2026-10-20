@@ -1,0 +1,845 @@
+[
+ {
+  "name": "match_id",
+  "type": "INTEGER",
+  "mode": "REQUIRED"
+ },
+ {
+  "name": "id",
+  "type": "STRING",
+  "mode": "REQUIRED"
+ },
+ {
+  "name": "index",
+  "type": "INTEGER",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "period",
+  "type": "INTEGER",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "timestamp",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "minute",
+  "type": "INTEGER",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "second",
+  "type": "INTEGER",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "type",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "possession",
+  "type": "INTEGER",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "possession_team",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "play_pattern",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "team",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "player",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "position",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "location",
+  "type": "FLOAT",
+  "mode": "REPEATED"
+ },
+ {
+  "name": "duration",
+  "type": "FLOAT",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "under_pressure",
+  "type": "BOOLEAN",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "counterpress",
+  "type": "BOOLEAN",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "off_camera",
+  "type": "BOOLEAN",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "out",
+  "type": "BOOLEAN",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "related_events",
+  "type": "STRING",
+  "mode": "REPEATED"
+ },
+ {
+  "name": "pass",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "recipient",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "length",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "angle",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "height",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "end_location",
+    "type": "FLOAT",
+    "mode": "REPEATED"
+   },
+   {
+    "name": "type",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "body_part",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "technique",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "cross",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "switch",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "through_ball",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "cut_back",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "goal_assist",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "shot_assist",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "assisted_shot_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "aerial_won",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "deflected",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "miscommunication",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "shot",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "statsbomb_xg",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "end_location",
+    "type": "FLOAT",
+    "mode": "REPEATED"
+   },
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "type",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "body_part",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "technique",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "first_time",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "one_on_one",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "aerial_won",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "key_pass_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "carry",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "end_location",
+    "type": "FLOAT",
+    "mode": "REPEATED"
+   }
+  ]
+ },
+ {
+  "name": "dribble",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "nutmeg",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "overrun",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "duel",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "type",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "interception",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "ball_recovery",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "recovery_failure",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "offensive",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "clearance",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "body_part",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "aerial_won",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "block",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "deflection",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "save_block",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "goalkeeper",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "type",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "technique",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "body_part",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "end_location",
+    "type": "FLOAT",
+    "mode": "REPEATED"
+   }
+  ]
+ },
+ {
+  "name": "foul_committed",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "card",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "type",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "penalty",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "foul_won",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "penalty",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "defensive",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+   }
+  ]
+ },
+ {
+  "name": "bad_behaviour",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "card",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "substitution",
+  "type": "RECORD",
+  "mode": "NULLABLE",
+  "fields": [
+   {
+    "name": "replacement",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "outcome",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "_ingested_at",
+  "type": "TIMESTAMP",
+  "mode": "REQUIRED"
+ }
+]

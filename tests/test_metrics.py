@@ -1,4 +1,4 @@
-from ingestion.metrics import ingestion_rows, parse_run_results
+from ingestion.metrics import ingestion_rows, merge_extract_load, parse_run_results
 
 RUN_RESULTS = {
     "metadata": {"invocation_id": "inv-1", "generated_at": "2026-10-20T06:10:00Z"},
@@ -35,11 +35,31 @@ def test_parse_run_results_flattens_each_node():
     assert test["bytes_processed"] is None
 
 
-def test_ingestion_rows_joins_extract_and_load_by_table():
+def test_merge_extract_load_joins_by_table():
     extracts = [{"table": "players", "bytes": 2048, "extract_seconds": 1.2}]
     loads = [{"table": "players", "rows": 50000, "load_seconds": 3.4}]
-    (row,) = ingestion_rows("run-1", extracts, loads)
-    assert row["table_name"] == "players"
-    assert row["rows"] == 50000
-    assert row["bytes"] == 2048
-    assert row["load_seconds"] == 3.4
+    (item,) = merge_extract_load(extracts, loads)
+    assert item == {
+        "table": "players",
+        "rows": 50000,
+        "bytes": 2048,
+        "extract_seconds": 1.2,
+        "load_seconds": 3.4,
+    }
+
+
+def test_ingestion_rows_share_run_id_and_timestamp():
+    items = [
+        {"table": "players", "rows": 1, "bytes": 2, "extract_seconds": 3.0, "load_seconds": 4.0},
+        {
+            "table": "statsbomb.events[43/106]",
+            "rows": 5,
+            "bytes": 6,
+            "extract_seconds": None,
+            "load_seconds": 7.0,
+        },
+    ]
+    rows = ingestion_rows("run-1", items)
+    assert [r["table_name"] for r in rows] == ["players", "statsbomb.events[43/106]"]
+    assert {r["run_id"] for r in rows} == {"run-1"}
+    assert len({r["recorded_at"] for r in rows}) == 1

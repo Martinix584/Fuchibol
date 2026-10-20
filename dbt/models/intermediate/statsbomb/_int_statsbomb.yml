@@ -1,0 +1,118 @@
+version: 2
+
+models:
+  - name: int_sb_match_periods
+    description: Inicio y fin de cada tiempo (1 a 4) por partido, en segundos de reloj.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, period]
+    columns:
+      - name: end_seconds
+        data_tests: [not_null]
+
+  - name: int_sb_player_match_minutes
+    description: Minutos jugados por jugador y partido (incluye descuento y alargue).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, player_id]
+    columns:
+      - name: minutes_played
+        data_tests:
+          - not_null
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 150  # 120' + descuentos (en la final de 2022 hubo 21' de descuento)
+
+  - name: int_sb_shots
+    description: Tiros con xG, resultado, distancia y asistidor (sin tanda de penales).
+    columns:
+      - name: shot_id
+        data_tests: [unique, not_null]
+      - name: xg
+        data_tests:
+          - not_null
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: int_sb_passes
+    description: Pases con banderas de progresivo, al área, pase clave y xA.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: xa
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: int_sb_player_match_stats
+    description: Todas las métricas de un jugador en un partido.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, player_id]
+    columns:
+      - name: passes_completed
+        data_tests: [non_negative]
+
+  - name: int_player_id_map
+    description: >
+      Cruce StatsBomb -> Transfermarkt. match_method dice qué regla lo resolvió
+      (override, name_country, full_country, tokens, name_only).
+    columns:
+      - name: sb_player_id
+        data_tests: [unique, not_null]
+      - name: tm_player_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_players')
+                field: player_id
+      - name: match_method
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [override, name_country, full_country, tokens, name_only]
+
+unit_tests:
+  - name: minutes_played_split_across_halves
+    description: >
+      1.º tiempo de 0:00 a 46:34 (con descuento) y 2.º de 45:00 a 94:00.
+      A juega todo (95.6'), B entra a los 70' (24.0') y C entra a los 41:20, cambia de
+      puesto en el 2.º tiempo y termina el partido (54.2').
+    model: int_sb_player_match_minutes
+    given:
+      - input: ref('int_sb_match_periods')
+        rows:
+          - {match_id: 1, period: 1, start_seconds: 0, end_seconds: 2794}
+          - {match_id: 1, period: 2, start_seconds: 2700, end_seconds: 5640}
+      - input: ref('stg_sb_lineups')
+        format: sql
+        rows: |
+          select 1 as match_id, 10 as team_id, 'T' as team_name, 100 as player_id, 'A' as player_name,
+                 cast(null as string) as player_nickname, 'A' as player_display_name, 1 as jersey_number,
+                 'X' as country_name,
+                 [cast((1, 'GK', '00:00', null, 1, null, 'Starting XI', 'Final Whistle') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>)] as positions,
+                 cast([] as array<struct<time string, card_type string, reason string, period int64>>) as cards, true as played, true as is_starter
+          union all
+          select 1, 10, 'T', 200, 'B', null, 'B', 2, 'X',
+                 [cast((23, 'CF', '70:00', null, 2, null, 'Substitution - On (Tactical)', 'Final Whistle') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>)],
+                 cast([] as array<struct<time string, card_type string, reason string, period int64>>), true, false
+          union all
+          select 1, 10, 'T', 300, 'C', null, 'C', 3, 'X',
+                 [cast((23, 'CF', '41:20', '64:09', 1, 2, 'Substitution - On (Tactical)', 'Tactical Shift') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>),
+                  cast((21, 'LW', '64:09', null, 2, null, 'Tactical Shift', 'Final Whistle') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>)],
+                 cast([] as array<struct<time string, card_type string, reason string, period int64>>), true, false
+    expect:
+      rows:
+        - {match_id: 1, team_id: 10, player_id: 100, is_starter: true, minutes_played: 95.6}
+        - {match_id: 1, team_id: 10, player_id: 200, is_starter: false, minutes_played: 24.0}
+        - {match_id: 1, team_id: 10, player_id: 300, is_starter: false, minutes_played: 54.2}

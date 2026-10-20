@@ -50,24 +50,36 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def ingestion_rows(run_id: str, extracts: list[dict], loads: list[dict]) -> list[dict]:
-    """Une las métricas de extract y load por tabla."""
+def merge_extract_load(extracts: list[dict], loads: list[dict]) -> list[dict]:
+    """Une por tabla las métricas de extract y de load de Transfermarkt."""
     loads_by_table = {r["table"]: r for r in loads}
-    rows = []
-    for e in extracts:
-        load = loads_by_table.get(e["table"], {})
-        rows.append(
-            {
-                "run_id": run_id,
-                "recorded_at": _now(),
-                "table_name": e["table"],
-                "rows": load.get("rows"),
-                "bytes": e.get("bytes"),
-                "extract_seconds": e.get("extract_seconds"),
-                "load_seconds": load.get("load_seconds"),
-            }
-        )
-    return rows
+    return [
+        {
+            "table": e["table"],
+            "rows": loads_by_table.get(e["table"], {}).get("rows"),
+            "bytes": e.get("bytes"),
+            "extract_seconds": e.get("extract_seconds"),
+            "load_seconds": loads_by_table.get(e["table"], {}).get("load_seconds"),
+        }
+        for e in extracts
+    ]
+
+
+def ingestion_rows(run_id: str, items: list[dict]) -> list[dict]:
+    """Filas para ops.pipeline_runs. Cada item: table, rows, bytes, extract_seconds, load_seconds."""
+    recorded_at = _now()
+    return [
+        {
+            "run_id": run_id,
+            "recorded_at": recorded_at,
+            "table_name": i["table"],
+            "rows": i.get("rows"),
+            "bytes": i.get("bytes"),
+            "extract_seconds": i.get("extract_seconds"),
+            "load_seconds": i.get("load_seconds"),
+        }
+        for i in items
+    ]
 
 
 def parse_run_results(run_results: dict, run_id: str) -> list[dict]:
@@ -112,8 +124,8 @@ def write_rows(table: str, rows: list[dict], schema: list[tuple[str, str]]) -> N
     log.info("Escritas %d filas en %s", len(rows), table_id)
 
 
-def record_ingestion(run_id: str, extracts: list[dict], loads: list[dict]) -> None:
-    write_rows("pipeline_runs", ingestion_rows(run_id, extracts, loads), PIPELINE_RUNS_SCHEMA)
+def record_ingestion(run_id: str, items: list[dict]) -> None:
+    write_rows("pipeline_runs", ingestion_rows(run_id, items), PIPELINE_RUNS_SCHEMA)
 
 
 def record_dbt(run_results_path: str, run_id: str) -> None:

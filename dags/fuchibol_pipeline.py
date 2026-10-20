@@ -1,12 +1,14 @@
-"""DAG semanal de Fuchibol.
+"""DAG semanal de Fuchibol: dos fuentes en paralelo y después dbt + BigQuery ML.
 
-check_updates ─► extract (mapeado por tabla) ─► load (mapeado) ─► record_ingestion ─► save_manifest
-                                                                                         │
-                       dbt_build_core ─► train_market_value_model ─► dbt_build_ml ◄──────┘
+Transfermarkt:  tm_check ─► tm_extract[tabla] ─► tm_load[tabla] ─► tm_finish
+StatsBomb:      sb_sync_matches ─► sb_ingest[competición-temporada] ─► sb_finish
+                                                     │
+            any_changes (short-circuit) ─► dbt_build_core ─► train_market_value_model ─► dbt_build_ml
 
-Si ningún archivo cambió desde la última corrida, check_updates corta el DAG
-(short-circuit) y no se gasta nada en BigQuery. Con el parámetro force=True se
-reprocesa todo igual.
+- Cada rama solo procesa lo que cambió (huella de archivo en Transfermarkt, last_updated
+  de cada partido en StatsBomb). Los manifests se guardan recién cuando la carga terminó.
+- Si ninguna fuente cambió, any_changes corta el DAG y no se gasta nada en BigQuery.
+- Con el parámetro force=True se reprocesa todo.
 """
 
 from __future__ import annotations
@@ -37,45 +39,77 @@ def dbt_command(args: str) -> str:
     catchup=False,
     max_active_runs=1,
     default_args={"retries": 2, "retry_delay": timedelta(minutes=5)},
-    params={"force": Param(False, type="boolean", description="Reprocesar todas las tablas")},
-    tags=["fuchibol", "transfermarkt", "bigquery", "dbt"],
+    params={
+        "force": Param(False, type="boolean", description="Reprocesar todo"),
+        "statsbomb_scope": Param(
+            None,
+            type=["null", "string"],
+            description="Alcance de StatsBomb (core, big5_2015, messi, all). Vacío = STATSBOMB_SCOPE",
+        ),
+    },
+    tags=["fuchibol", "transfermarkt", "statsbomb", "bigquery", "dbt"],
     doc_md=__doc__,
 )
 def fuchibol_pipeline():
-    @task.short_circuit
-    def check_updates(params=None) -> list[str]:
+    # ------------------------------------------------------------------ Transfermarkt
+    @task
+    def tm_check(params=None) -> list[str]:
         from ingestion.extract import detect_changes
 
         return detect_changes(force=params["force"])
 
     @task(max_active_tis_per_dag=3)
-    def extract(table: str, ds=None) -> dict:
+    def tm_extract(table: str, ds=None) -> dict:
         from ingestion.extract import extract_table
 
         return extract_table(table, ingest_date=ds)
 
     @task(max_active_tis_per_dag=3)
-    def load(extracted: dict) -> dict:
+    def tm_load(extracted: dict) -> dict:
         from ingestion.load import load_table
 
         return load_table(extracted["gcs_uri"], extracted["table"])
 
     @task
-    def record_ingestion(extracts: list[dict], loads: list[dict], run_id=None) -> None:
-        from ingestion.metrics import record_ingestion as record
+    def tm_finish(extracts: list[dict], loads: list[dict], run_id=None) -> None:
+        from ingestion import extract, metrics
 
-        record(run_id, list(extracts), list(loads))
+        extracts, loads = list(extracts), list(loads)
+        metrics.record_ingestion(run_id, metrics.merge_extract_load(extracts, loads))
+        extract.save_manifest({e["table"]: e["fingerprint"] for e in extracts})
+
+    # ------------------------------------------------------------------ StatsBomb
+    @task
+    def sb_sync_matches(params=None, ds=None, run_id=None) -> list[dict]:
+        from ingestion import metrics, statsbomb
+
+        synced = statsbomb.sync_matches(params["statsbomb_scope"], params["force"], ingest_date=ds)
+        metrics.record_ingestion(run_id, synced["metrics"])
+        return synced["plan"]
+
+    @task(max_active_tis_per_dag=2, execution_timeout=timedelta(hours=2))
+    def sb_ingest(item: dict, ds=None) -> dict:
+        from ingestion.statsbomb import ingest_batch
+
+        return ingest_batch(item, ingest_date=ds)
 
     @task
-    def save_manifest(extracts: list[dict]) -> None:
-        """Se guarda al final: si un load falla, la próxima corrida vuelve a intentar esa tabla."""
-        from ingestion.extract import save_manifest as save
+    def sb_finish(batches: list[dict], run_id=None) -> None:
+        from ingestion import metrics, statsbomb
 
-        save({e["table"]: e["fingerprint"] for e in extracts})
+        batches = list(batches)
+        metrics.record_ingestion(run_id, [m for b in batches for m in b["metrics"]])
+        statsbomb.save_manifest(batches)
+
+    # ------------------------------------------------------------------ Gate + dbt
+    @task.short_circuit
+    def any_changes(tm_tables: list[str], sb_plan: list[dict]) -> bool:
+        return bool(tm_tables) or bool(sb_plan)
 
     dbt_build_core = BashOperator(
         task_id="dbt_build_core",
         bash_command=dbt_command("build --exclude tag:ml"),
+        trigger_rule="none_failed",  # una rama sin cambios queda "skipped", no frena a dbt
     )
     train_model = BashOperator(
         task_id="train_market_value_model",
@@ -86,13 +120,17 @@ def fuchibol_pipeline():
         bash_command=dbt_command("build --select tag:ml"),
     )
 
-    tables = check_updates()
-    extracts = extract.expand(table=tables)
-    loads = load.expand(extracted=extracts)
-    recorded = record_ingestion(extracts, loads)
-    saved = save_manifest(extracts)
+    tm_tables = tm_check()
+    tm_extracts = tm_extract.expand(table=tm_tables)
+    tm_loads = tm_load.expand(extracted=tm_extracts)
+    tm_done = tm_finish(tm_extracts, tm_loads)
 
-    loads >> recorded >> saved >> dbt_build_core >> train_model >> dbt_build_ml
+    sb_plan = sb_sync_matches()
+    sb_batches = sb_ingest.expand(item=sb_plan)
+    sb_done = sb_finish(sb_batches)
+
+    gate = any_changes(tm_tables, sb_plan)
+    [gate, tm_done, sb_done] >> dbt_build_core >> train_model >> dbt_build_ml
 
 
 fuchibol_pipeline()

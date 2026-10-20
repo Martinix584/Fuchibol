@@ -6,6 +6,7 @@ profile: fuchibol
 model-paths: ["models"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
+seed-paths: ["seeds"]
 test-paths: ["tests"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
@@ -34,6 +35,10 @@ models:
       +schema: ml
       +materialized: table
       +tags: ["ml"]
+
+seeds:
+  fuchibol:
+    +schema: seeds
 
 snapshots:
   fuchibol:

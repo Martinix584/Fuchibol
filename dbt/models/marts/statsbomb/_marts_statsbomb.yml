@@ -1,0 +1,106 @@
+version: 2
+
+models:
+  - name: fct_sb_player_matches
+    description: Un jugador por partido con todas sus métricas avanzadas (StatsBomb).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, player_id]
+
+  - name: mart_sb_player_seasons
+    description: >
+      Un jugador por competición-temporada: goles, xG, npxG, xA, pases progresivos,
+      conducciones, presiones, etc., en totales y cada 90 minutos.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, competition_id, season_id]
+    columns:
+      - name: npxg
+        description: xG sin penales.
+        data_tests: [non_negative]
+      - name: xa
+        description: Asistencias esperadas = xG de los tiros que generaron sus pases.
+      - name: goals_minus_npxg
+        description: Goles sin penales menos npxG. Positivo = definió mejor de lo esperado.
+      - name: pass_completion
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: fct_sb_shots
+    description: Un tiro por fila con coordenadas (mapa de tiros).
+    columns:
+      - name: shot_id
+        data_tests: [unique, not_null]
+      - name: chance_quality
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [Muy clara, Clara, Baja]
+
+  - name: fct_sb_team_matches
+    description: Un equipo por partido con xG a favor y en contra y puntos esperados (xPts).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, team_id]
+      - outcome_probabilities_sum_to_one
+    columns:
+      - name: xpts
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 3
+
+  - name: mart_sb_team_seasons
+    description: Tabla real vs. tabla por xG (puntos menos xPts = suerte o eficacia).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [team_id, competition_id, season_id]
+
+unit_tests:
+  - name: xpts_is_one_for_a_goalless_match_with_no_shots
+    description: Sin tiros, el xG es 0, el 0-0 tiene probabilidad 1 y cada equipo suma 1 xPt.
+    model: fct_sb_team_matches
+    given:
+      - input: ref('stg_sb_matches')
+        rows:
+          - {match_id: 1, competition_id: 43, season_id: 106, home_team_id: 10, home_team_name: A,
+             away_team_id: 20, away_team_name: B, home_score: 0, away_score: 0}
+      - input: ref('int_sb_shots')
+        format: sql
+        rows: |
+          select cast(null as int64) as match_id, cast(null as int64) as team_id,
+                 cast(null as float64) as xg, cast(null as bool) as is_penalty,
+                 cast(null as bool) as is_on_target
+          from unnest([1]) where false
+    expect:
+      rows:
+        - {match_id: 1, team_id: 10, xg_for: 0, xg_against: 0, draw_probability: 1, xpts: 1, points: 1, result: Empató}
+        - {match_id: 1, team_id: 20, xg_for: 0, xg_against: 0, draw_probability: 1, xpts: 1, points: 1, result: Empató}
+
+  - name: dominant_xg_gives_more_xpts
+    description: "Con 2.5 xG contra 0.3, el local suma 2.679 xPts y el visitante 0.205 (Poisson, calculado aparte en Python)."
+    model: fct_sb_team_matches
+    given:
+      - input: ref('stg_sb_matches')
+        rows:
+          - {match_id: 2, home_team_id: 10, home_team_name: A, away_team_id: 20, away_team_name: B,
+             home_score: 1, away_score: 1}
+      - input: ref('int_sb_shots')
+        rows:
+          - {match_id: 2, team_id: 10, xg: 1.5, is_penalty: false, is_on_target: true}
+          - {match_id: 2, team_id: 10, xg: 1.0, is_penalty: false, is_on_target: true}
+          - {match_id: 2, team_id: 20, xg: 0.3, is_penalty: false, is_on_target: true}
+    expect:
+      format: sql
+      rows: |
+        select 2 as match_id, 10 as team_id, 2.5 as xg_for, 0.3 as xg_against, 1 as points, 2.679 as xpts
+        union all
+        select 2, 20, 0.3, 2.5, 1, 0.205

@@ -1,5 +1,9 @@
 -r requirements.txt
 dbt-core~=1.12.0
 dbt-bigquery~=1.12.0
-pytest>=8,<9
+pytest>=8
 ruff>=0.6
+# smoke test: corre el SQL compilado en DuckDB (sqlglot fijado: la traducción depende de la versión)
+duckdb>=1.1,<2
+sqlglot==30.23.0
+matplotlib>=3.8  # scripts/readme_charts.py

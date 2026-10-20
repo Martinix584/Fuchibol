@@ -5,8 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
+    name: Lint, tests y dbt parse
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,8 +27,41 @@ jobs:
           ruff format --check ingestion dags tests scripts
       - name: Tests unitarios
         run: pytest -q
-      - name: dbt parse (valida SQL, refs y YAML sin conectarse a BigQuery)
+      - name: dbt parse (SQL, refs, YAML y unit tests, sin conectarse a BigQuery)
         working-directory: dbt
         env:
           DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
         run: dbt parse --profiles-dir .
+
+  smoke:
+    name: Smoke test (dbt en DuckDB con partidos reales de StatsBomb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Últimos 8 partidos del Mundial 2022 + Transfermarkt sintético
+        run: scripts/smoke.sh --matches 8 --report smoke-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report
+          path: smoke-report.json
+
+  dag:
+    name: DAG de Airflow (dag.test en 4 escenarios)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Airflow 3.1.8 con sus constraints oficiales
+        run: |
+          CONSTRAINTS=https://raw.githubusercontent.com/apache/airflow/constraints-3.1.8/constraints-3.12.txt
+          pip install "apache-airflow==3.1.8" -r requirements.txt --constraint "$CONSTRAINTS"
+      - run: scripts/test_dag.sh

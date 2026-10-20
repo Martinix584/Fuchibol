@@ -1,30 +1,51 @@
-"""Corre extract + load + métricas sin Airflow (útil para la primera carga)."""
+"""Corre la ingesta completa sin Airflow (útil para la primera carga o para desarrollar).
+
+PYTHONPATH=. python scripts/run_ingestion.py                  # las dos fuentes
+PYTHONPATH=. python scripts/run_ingestion.py --only statsbomb --scope core,big5_2015
+"""
 
 import argparse
 import logging
 import uuid
 
-from ingestion.extract import detect_changes, extract_table, save_manifest
-from ingestion.load import load_table
-from ingestion.metrics import record_ingestion
+from ingestion import extract, load, metrics, statsbomb
+
+
+def run_transfermarkt(force: bool) -> list[dict]:
+    extracts, loads = [], []
+    for table in extract.detect_changes(force=force):
+        extracted = extract.extract_table(table)
+        extracts.append(extracted)
+        loads.append(load.load_table(extracted["gcs_uri"], table))
+    extract.save_manifest({e["table"]: e["fingerprint"] for e in extracts})
+    return metrics.merge_extract_load(extracts, loads)
+
+
+def run_statsbomb(scope: str | None, force: bool) -> list[dict]:
+    synced = statsbomb.sync_matches(scope, force)
+    batches = [statsbomb.ingest_batch(item) for item in synced["plan"]]
+    statsbomb.save_manifest(batches)
+    return synced["metrics"] + [m for b in batches for m in b["metrics"]]
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--force", action="store_true", help="Reprocesar todas las tablas")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--only", choices=["transfermarkt", "statsbomb"], default=None)
+    parser.add_argument("--scope", default=None, help="Alcance de StatsBomb (core, big5_2015, messi, all)")
+    parser.add_argument("--force", action="store_true", help="Reprocesar todo")
     args = parser.parse_args()
 
-    run_id = f"manual__{uuid.uuid4().hex[:8]}"
-    extracts, loads = [], []
-    for table in detect_changes(force=args.force):
-        extracted = extract_table(table)
-        extracts.append(extracted)
-        loads.append(load_table(extracted["gcs_uri"], table))
+    items = []
+    if args.only in (None, "transfermarkt"):
+        items += run_transfermarkt(args.force)
+    if args.only in (None, "statsbomb"):
+        items += run_statsbomb(args.scope, args.force)
 
-    record_ingestion(run_id, extracts, loads)
-    save_manifest({e["table"]: e["fingerprint"] for e in extracts})
-    logging.info("Listo: %d tablas, %s filas", len(loads), sum(r["rows"] for r in loads))
+    metrics.record_ingestion(f"manual__{uuid.uuid4().hex[:8]}", items)
+    logging.info("Listo: %d cargas, %s filas", len(items), sum(i["rows"] or 0 for i in items))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: mart_player_scouting
+    description: >
+      Rendimiento avanzado (StatsBomb) + perfil y valor de mercado (Transfermarkt) para
+      los jugadores cruzados. Base de la página de scouting.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, competition_id, season_id]
+    columns:
+      - name: tm_player_id
+        data_tests: [not_null]
+      - name: million_eur_per_npxg_xa_per_90
+        description: Millones de euros de valor por cada unidad de npxG+xA cada 90.

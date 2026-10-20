@@ -32,6 +32,17 @@ QUERIES = {
         order by segundos desc
         limit 10
     """,
+    "Cruce de jugadores StatsBomb -> Transfermarkt": """
+        select match_method as regla, count(*) as jugadores
+        from `{p}.intermediate.int_player_id_map`
+        group by match_method
+        order by jugadores desc
+    """,
+    "Modelo de valor de mercado (BigQuery ML)": """
+        select round(r2_score, 3) as r2, round(mean_absolute_error, 3) as mae_log,
+               round(median_absolute_error, 3) as mediana_error_log
+        from `{p}.ml.ml_model_evaluation`
+    """,
 }
 
 
