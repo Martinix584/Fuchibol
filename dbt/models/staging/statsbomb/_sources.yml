@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: statsbomb
+    description: >
+      StatsBomb Open Data (https://github.com/statsbomb/open-data): datos de eventos con
+      xG, del mismo tipo que Opta. events y lineups son append-only (una carga por
+      ingesta); el staging se queda con la última ingesta de cada partido.
+    schema: "{{ env_var('BQ_STATSBOMB_DATASET', 'raw_statsbomb') }}"
+    loaded_at_field: _ingested_at
+    tables:
+      - name: competitions
+      - name: matches
+      - name: events
+        freshness:
+          warn_after: {count: 30, period: day}
+      - name: lineups

@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: stg_sb_competitions
+    description: Competiciones y temporadas disponibles en StatsBomb Open Data.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [competition_id, season_id]
+
+  - name: stg_sb_matches
+    description: Un partido por fila (solo los que tienen datos disponibles).
+    columns:
+      - name: match_id
+        data_tests: [unique, not_null]
+      - name: home_score
+        data_tests: [not_null, non_negative]
+
+  - name: stg_sb_events
+    description: >
+      Un evento por fila (pase, tiro, conducción, presión...). Coordenadas en una cancha de
+      120 x 80 con el ataque siempre hacia x = 120.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: match_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_sb_matches')
+                field: match_id
+      - name: x
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 120.5
+      - name: y
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 80.5
+      - name: period
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+
+  - name: stg_sb_lineups
+    description: Jugadores convocados por partido, con sus tramos jugados.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, player_id]
+    columns:
+      - name: player_id
+        data_tests: [not_null]

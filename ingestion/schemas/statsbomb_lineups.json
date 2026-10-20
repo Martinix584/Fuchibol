@@ -1,0 +1,140 @@
+[
+ {
+  "name": "match_id",
+  "type": "INTEGER",
+  "mode": "REQUIRED"
+ },
+ {
+  "name": "team_id",
+  "type": "INTEGER",
+  "mode": "REQUIRED"
+ },
+ {
+  "name": "team_name",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "lineup",
+  "type": "RECORD",
+  "mode": "REPEATED",
+  "fields": [
+   {
+    "name": "player_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "player_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "player_nickname",
+    "type": "STRING",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "jersey_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+   },
+   {
+    "name": "country",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+     {
+      "name": "id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "name",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "cards",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+     {
+      "name": "time",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "card_type",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "reason",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "period",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     }
+    ]
+   },
+   {
+    "name": "positions",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+     {
+      "name": "position_id",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "position",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "from",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "to",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "from_period",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "to_period",
+      "type": "INTEGER",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "start_reason",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     },
+     {
+      "name": "end_reason",
+      "type": "STRING",
+      "mode": "NULLABLE"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "_ingested_at",
+  "type": "TIMESTAMP",
+  "mode": "REQUIRED"
+ }
+]

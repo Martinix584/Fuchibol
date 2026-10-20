@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: transfermarkt
+    description: >
+      Fotos completas de transfermarkt-datasets (CC0) cargadas tal cual desde GCS
+      por ingestion/load.py. Los valores de mercado son estimaciones de la comunidad
+      de Transfermarkt, no precios reales.
+    schema: "{{ env_var('BQ_RAW_DATASET', 'raw_transfermarkt') }}"
+    tables:
+      - name: competitions
+      - name: clubs
+      - name: players
+      - name: player_valuations
+      - name: transfers
+      - name: games
+      - name: appearances

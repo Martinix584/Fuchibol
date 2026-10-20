@@ -1,0 +1,20 @@
+version: 2
+
+seeds:
+  - name: country_aliases
+    description: Nombres de país de StatsBomb y Transfermarkt que no coinciden, llevados a uno solo.
+    config:
+      column_types: {alias: string, country: string}
+    columns:
+      - name: alias
+        data_tests: [unique, not_null]
+
+  - name: player_id_overrides
+    description: >
+      Cruces manuales StatsBomb -> Transfermarkt. Tienen prioridad sobre el algoritmo.
+      Sirven para los casos ambiguos que lista el test warn_ambiguous_player_matches.
+    config:
+      column_types: {sb_player_id: int64, tm_player_id: int64, note: string}
+    columns:
+      - name: sb_player_id
+        data_tests: [unique, not_null]

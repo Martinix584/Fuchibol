@@ -1,0 +1,19 @@
+{
+  "name": "Fuchibol",
+  "dataColors": ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"],
+  "background": "#fcfcfb",
+  "foreground": "#0b0b0b",
+  "tableAccent": "#2a78d6",
+  "good": "#008300",
+  "neutral": "#eda100",
+  "bad": "#e34948",
+  "maximum": "#1a4f8f",
+  "center": "#d9d8d3",
+  "minimum": "#eb6834",
+  "textClasses": {
+    "title": {"fontFace": "Segoe UI Semibold", "fontSize": 14, "color": "#0b0b0b"},
+    "header": {"fontFace": "Segoe UI Semibold", "fontSize": 12, "color": "#0b0b0b"},
+    "label": {"fontFace": "Segoe UI", "fontSize": 10, "color": "#52514e"},
+    "callout": {"fontFace": "Segoe UI Semibold", "fontSize": 28, "color": "#0b0b0b"}
+  }
+}

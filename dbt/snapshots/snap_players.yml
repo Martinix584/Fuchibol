@@ -1,0 +1,12 @@
+snapshots:
+  - name: snap_players
+    description: >
+      Historial (SCD tipo 2) del valor de mercado, club y contrato de cada jugador.
+      Cada corrida semanal del DAG guarda solo lo que cambió, así que con el tiempo
+      se arma una serie propia de valuaciones, independiente del origen.
+    relation: ref('stg_players')
+    config:
+      unique_key: player_id
+      strategy: check
+      check_cols: [market_value_eur, current_club_id, contract_expiration_date]
+      hard_deletes: invalidate

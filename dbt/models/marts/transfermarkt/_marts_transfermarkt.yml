@@ -1,0 +1,88 @@
+version: 2
+
+models:
+  - name: dim_players
+    description: Un jugador por fila con perfil, valor y totales de carrera (goles, asistencias, por 90).
+    columns:
+      - name: player_id
+        data_tests: [unique, not_null]
+      - name: goals_per_game
+        description: Goles por partido jugado en las competiciones cubiertas.
+        data_tests: [non_negative]
+      - name: goals_per_90
+        description: Goles cada 90 minutos.
+
+  - name: dim_clubs
+    description: Clubes con su liga.
+    columns:
+      - name: club_id
+        data_tests: [unique, not_null]
+
+  - name: mart_player_seasons
+    description: Stats de cada jugador por temporada (la base para comparar jugadores en Power BI).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, season]
+
+  - name: mart_transfer_roi
+    description: ¿Valió lo que se pagó? Fichajes pagos con su veredicto.
+    columns:
+      - name: transfer_id
+        data_tests: [unique, not_null]
+      - name: transfer_fee_eur
+        data_tests: [not_null, non_negative]
+      - name: verdict
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [Acierto, Cumplió, Fracaso, Muy reciente, Sin datos]
+
+  - name: mart_club_transfer_balance
+    description: Gasto, ingresos, balance y tasa de aciertos por club.
+    columns:
+      - name: club_id
+        data_tests: [unique, not_null]
+      - name: hit_rate
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: mart_argentina_exports
+    description: Jugadores argentinos vendidos desde la liga argentina al exterior.
+    columns:
+      - name: transfer_id
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: transfer_verdicts
+    description: Un caso por veredicto de mart_transfer_roi; los pases libres (fee 0) no entran.
+    model: mart_transfer_roi
+    given:
+      - input: ref('int_transfers_enriched')
+        rows:
+          - {transfer_id: acierto, is_paid_transfer: true, has_full_window: true, transfer_fee_eur: 10000000,
+             market_value_at_transfer_eur: 8000000, value_1y_after_eur: 15000000, minutes_share_after: 0.7}
+          - {transfer_id: fracaso_valor, is_paid_transfer: true, has_full_window: true, transfer_fee_eur: 10000000,
+             market_value_at_transfer_eur: 9000000, value_1y_after_eur: 5000000, minutes_share_after: 0.8}
+          - {transfer_id: fracaso_minutos, is_paid_transfer: true, has_full_window: true, transfer_fee_eur: 10000000,
+             market_value_at_transfer_eur: 9000000, value_1y_after_eur: 12000000, minutes_share_after: 0.1}
+          - {transfer_id: cumplio, is_paid_transfer: true, has_full_window: true, transfer_fee_eur: 10000000,
+             market_value_at_transfer_eur: 9000000, value_1y_after_eur: 9000000, minutes_share_after: 0.6}
+          - {transfer_id: reciente, is_paid_transfer: true, has_full_window: false, transfer_fee_eur: 10000000,
+             market_value_at_transfer_eur: 9000000, value_1y_after_eur: null, minutes_share_after: null}
+          - {transfer_id: sin_datos, is_paid_transfer: true, has_full_window: true, transfer_fee_eur: 10000000,
+             market_value_at_transfer_eur: 9000000, value_1y_after_eur: null, minutes_share_after: 0.5}
+          - {transfer_id: libre, is_paid_transfer: false, has_full_window: true, transfer_fee_eur: 0,
+             market_value_at_transfer_eur: 9000000, value_1y_after_eur: 9000000, minutes_share_after: 0.9}
+    expect:
+      rows:
+        - {transfer_id: acierto, verdict: Acierto}
+        - {transfer_id: fracaso_valor, verdict: Fracaso}
+        - {transfer_id: fracaso_minutos, verdict: Fracaso}
+        - {transfer_id: cumplio, verdict: Cumplió}
+        - {transfer_id: reciente, verdict: Muy reciente}
+        - {transfer_id: sin_datos, verdict: Sin datos}

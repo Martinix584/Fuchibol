@@ -1,0 +1,57 @@
+[
+ {
+  "name": "competition_id",
+  "type": "INTEGER",
+  "mode": "REQUIRED"
+ },
+ {
+  "name": "season_id",
+  "type": "INTEGER",
+  "mode": "REQUIRED"
+ },
+ {
+  "name": "country_name",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "competition_name",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "competition_gender",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "competition_youth",
+  "type": "BOOLEAN",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "competition_international",
+  "type": "BOOLEAN",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "season_name",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "match_updated",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "match_available",
+  "type": "STRING",
+  "mode": "NULLABLE"
+ },
+ {
+  "name": "_ingested_at",
+  "type": "TIMESTAMP",
+  "mode": "REQUIRED"
+ }
+]

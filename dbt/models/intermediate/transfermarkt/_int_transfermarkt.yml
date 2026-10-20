@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: int_clubs_with_league
+    description: Clubes con el nombre y país de su liga.
+    columns:
+      - name: club_id
+        data_tests: [unique, not_null]
+
+  - name: int_player_season_stats
+    description: Stats por jugador y temporada sumando todos sus clubes y competiciones.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, season]
+    columns:
+      - name: minutes
+        data_tests: [not_null, non_negative]
+      - name: goals_per_90
+        data_tests: [non_negative]
+
+  - name: int_player_value_features
+    description: Rendimiento + perfil + valor al cierre de temporada. Base del modelo de ML.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, season]
+    columns:
+      - name: age
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 14
+                max_value: 50
+              config:
+                severity: warn
+
+  - name: int_transfers_enriched
+    description: Transferencias con valor y rendimiento antes y después.
+    columns:
+      - name: transfer_id
+        data_tests: [unique, not_null]
+      - name: minutes_share_after
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1.05
+              config:
+                severity: warn

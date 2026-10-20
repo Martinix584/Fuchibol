@@ -1,0 +1,24 @@
+# Secretos
+.env
+keys/
+*.json.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+
+# Airflow
+logs/
+
+# Power BI (los .pbix pueden pesar mucho; subilos con Git LFS si querés versionarlos)
+*.pbix.bak

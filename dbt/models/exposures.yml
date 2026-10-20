@@ -1,0 +1,23 @@
+version: 2
+
+exposures:
+  - name: fuchibol_power_bi
+    label: Reporte Fuchibol (Power BI)
+    type: dashboard
+    maturity: medium
+    description: >
+      Reporte de 7 páginas: ficha del jugador, ¿valió lo que se pagó?, Argentina fábrica de
+      jugadores, subvaluados (BigQuery ML), scouting con xG, tabla por xG y salud del pipeline.
+    owner:
+      name: Fuchibol
+    depends_on:
+      - ref('dim_players')
+      - ref('mart_player_seasons')
+      - ref('mart_transfer_roi')
+      - ref('mart_club_transfer_balance')
+      - ref('mart_argentina_exports')
+      - ref('mart_undervalued_players')
+      - ref('mart_player_scouting')
+      - ref('mart_sb_player_seasons')
+      - ref('fct_sb_shots')
+      - ref('mart_sb_team_seasons')
