@@ -36,8 +36,12 @@ last_period as (
 
 segments as (
 
-    {# Cada tramo, recortado a cada tiempo que cruza (en segundos de reloj) #}
-    select
+    {#
+      Cada tramo, recortado a cada tiempo que cruza (en segundos de reloj). DISTINCT: el origen
+      a veces repite un tramo idéntico, y con empates el orden de las ventanas de abajo no
+      sería determinístico (el mismo tiempo podía contarse dos veces).
+    #}
+    select distinct
         positions.match_id,
         positions.team_id,
         positions.player_id,

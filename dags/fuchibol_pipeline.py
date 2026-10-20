@@ -18,16 +18,24 @@ from datetime import datetime, timedelta
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import Param, dag, task
 
-DBT_BIN = "/opt/dbt-venv/bin/dbt"
+# dbt corre en su propio virtualenv. Se le saca PYTHONPATH porque el entrypoint de la imagen
+# de Airflow le agrega sus librerías (cuando el contenedor corre con otro uid) y dbt terminaría
+# importando un protobuf incompatible.
+DBT_BIN = "env -u PYTHONPATH /opt/dbt-venv/bin/dbt"
 DBT_DIR = "/opt/airflow/dbt"
 
 
 def dbt_command(args: str) -> str:
-    """Corre dbt y sube su run_results.json a ops.dbt_results aunque falle, sin perder el exit code."""
+    """Corre dbt y sube su run_results.json a ops.dbt_results aunque falle, sin perder el exit code.
+
+    Se borra el run_results.json anterior: si dbt falla antes de escribir uno nuevo, no se
+    suben otra vez los resultados de la corrida previa.
+    """
+    results = f"{DBT_DIR}/target/run_results.json"
     return (
-        f"cd {DBT_DIR} && {DBT_BIN} {args} --target prod; status=$?; "
-        "cd /opt/airflow && python -m ingestion.metrics dbt "
-        f"{DBT_DIR}/target/run_results.json --run-id '{{{{ run_id }}}}'; "
+        f"rm -f {results}; cd {DBT_DIR} && {DBT_BIN} {args} --target prod; status=$?; "
+        f"if [ -f {results} ]; then cd /opt/airflow && python -m ingestion.metrics dbt "
+        f"{results} --run-id '{{{{ run_id }}}}'; fi; "
         "exit $status"
     )
 

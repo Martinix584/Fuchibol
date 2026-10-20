@@ -40,6 +40,7 @@ value_after as (
         on valuations.player_id = transfers.player_id
         and valuations.valuation_date between date_add(transfers.transfer_date, interval 270 day)
             and date_add(transfers.transfer_date, interval 450 day)
+    where true  -- BigQuery exigía WHERE/GROUP BY/HAVING junto a QUALIFY
     qualify row_number() over (
         partition by transfers.transfer_id
         order by abs(date_diff(valuations.valuation_date, date_add(transfers.transfer_date, interval 365 day), day))

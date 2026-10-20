@@ -73,6 +73,9 @@ unit_tests:
         rows:
           - {match_id: 1, competition_id: 43, season_id: 106, home_team_id: 10, home_team_name: A,
              away_team_id: 20, away_team_name: B, home_score: 0, away_score: 0}
+      - input: ref('int_sb_match_periods')
+        rows:
+          - {match_id: 1, period: 1}
       - input: ref('int_sb_shots')
         format: sql
         rows: |
@@ -93,6 +96,9 @@ unit_tests:
         rows:
           - {match_id: 2, home_team_id: 10, home_team_name: A, away_team_id: 20, away_team_name: B,
              home_score: 1, away_score: 1}
+      - input: ref('int_sb_match_periods')
+        rows:
+          - {match_id: 2, period: 1}
       - input: ref('int_sb_shots')
         rows:
           - {match_id: 2, team_id: 10, xg: 1.5, is_penalty: false, is_on_target: true}

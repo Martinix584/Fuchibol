@@ -43,7 +43,7 @@ STATSBOMB_WORKERS = int(os.getenv("STATSBOMB_WORKERS", "8"))
 # Alcances predefinidos: (competition_id, season_id). Se elige con STATSBOMB_SCOPE
 # (varios separados por coma). "all" = todas las competiciones masculinas.
 STATSBOMB_SCOPES = {
-    # ~350 partidos: torneos recientes que también cubre Transfermarkt
+    # 348 partidos: torneos recientes que también cubre Transfermarkt
     "core": [
         (43, 106),  # Mundial 2022
         (43, 3),  # Mundial 2018
@@ -53,9 +53,9 @@ STATSBOMB_SCOPES = {
         (1267, 107),  # Copa Africana 2023
         (9, 281),  # Bundesliga 2023/24 (Leverkusen invicto)
     ],
-    # ~1.800 partidos: temporadas completas de las 5 grandes ligas
+    # 1.551 partidos: Premier, La Liga, Serie A y Ligue 1 2015/16 completas + 34 de la Bundesliga
     "big5_2015": [(2, 27), (11, 27), (9, 27), (12, 27), (7, 27)],
-    # La Liga de Messi (solo partidos del Barcelona), 2004/05 a 2020/21
+    # 866 partidos: La Liga de Messi, 2004/05 a 2020/21 (partidos del Barcelona; 2015/16 completa)
     "messi": [(11, s) for s in (37, 38, 39, 40, 41, 21, 22, 23, 24, 25, 26, 27, 2, 1, 4, 42, 90)],
 }
 STATSBOMB_SCOPE = os.getenv("STATSBOMB_SCOPE", "core")

@@ -31,17 +31,19 @@ models:
                 to: ref('stg_sb_matches')
                 field: match_id
       - name: x
+        description: 0 a 120. El origen trae algunos puntos apenas afuera de la línea (ej. 120.7).
         data_tests:
           - in_range:
               arguments:
-                min_value: 0
-                max_value: 120.5
+                min_value: -2
+                max_value: 122
       - name: y
+        description: 0 a 80. El origen trae algunos puntos apenas afuera de la línea (ej. 80.6).
         data_tests:
           - in_range:
               arguments:
-                min_value: 0
-                max_value: 80.5
+                min_value: -2
+                max_value: 82
       - name: period
         data_tests:
           - accepted_values:

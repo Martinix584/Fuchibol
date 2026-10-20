@@ -33,9 +33,11 @@ sb_players as (
     select
         lineups.player_id as sb_player_id,
         any_value(lineups.player_name) as sb_full_name,
-        any_value(lineups.player_display_name) as sb_display_name,
+        {# El apodo a veces falta en algunos partidos: se prefiere siempre que exista (any_value ignora nulls) #}
+        coalesce(any_value(lineups.player_nickname), any_value(lineups.player_name)) as sb_display_name,
         {{ normalize_name('any_value(lineups.player_name)') }} as full_key,
-        {{ normalize_name('any_value(lineups.player_display_name)') }} as display_key,
+        {{ normalize_name('coalesce(any_value(lineups.player_nickname), any_value(lineups.player_name))') }}
+            as display_key,
         {{ normalize_name('coalesce(any_value(aliases.country), any_value(sb_country.country_name))') }}
             as country_key
     from {{ ref('stg_sb_lineups') }} as lineups

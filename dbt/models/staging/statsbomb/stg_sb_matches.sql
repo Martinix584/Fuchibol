@@ -1,3 +1,13 @@
+{# matches es append-only (una foto por ingesta): se queda con la última versión de cada partido #}
+with source as (
+
+    select *
+    from {{ source('statsbomb', 'matches') }}
+    where match_status = 'available'
+    qualify row_number() over (partition by match_id order by _ingested_at desc) = 1
+
+)
+
 select
     match_id,
     match_date,
@@ -19,5 +29,4 @@ select
     referee.name as referee_name,
     last_updated
 
-from {{ source('statsbomb', 'matches') }}
-where match_status = 'available'
+from source

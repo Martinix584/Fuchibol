@@ -87,7 +87,8 @@ unit_tests:
     description: >
       1.º tiempo de 0:00 a 46:34 (con descuento) y 2.º de 45:00 a 94:00.
       A juega todo (95.6'), B entra a los 70' (24.0') y C entra a los 41:20, cambia de
-      puesto en el 2.º tiempo y termina el partido (54.2').
+      puesto en el 2.º tiempo y termina el partido (54.2'). D trae su tramo repetido en el
+      origen y no se cuenta dos veces (95.6').
     model: int_sb_player_match_minutes
     given:
       - input: ref('int_sb_match_periods')
@@ -111,8 +112,14 @@ unit_tests:
                  [cast((23, 'CF', '41:20', '64:09', 1, 2, 'Substitution - On (Tactical)', 'Tactical Shift') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>),
                   cast((21, 'LW', '64:09', null, 2, null, 'Tactical Shift', 'Final Whistle') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>)],
                  cast([] as array<struct<time string, card_type string, reason string, period int64>>), true, false
+          union all
+          select 1, 10, 'T', 400, 'D', null, 'D', 4, 'X',
+                 [cast((1, 'GK', '00:00', null, 1, null, 'Starting XI', 'Final Whistle') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>),
+                  cast((1, 'GK', '00:00', null, 1, null, 'Starting XI', 'Final Whistle') as struct<position_id int64, position string, `from` string, `to` string, from_period int64, to_period int64, start_reason string, end_reason string>)],
+                 cast([] as array<struct<time string, card_type string, reason string, period int64>>), true, true
     expect:
       rows:
         - {match_id: 1, team_id: 10, player_id: 100, is_starter: true, minutes_played: 95.6}
         - {match_id: 1, team_id: 10, player_id: 200, is_starter: false, minutes_played: 24.0}
         - {match_id: 1, team_id: 10, player_id: 300, is_starter: false, minutes_played: 54.2}
+        - {match_id: 1, team_id: 10, player_id: 400, is_starter: true, minutes_played: 95.6}
