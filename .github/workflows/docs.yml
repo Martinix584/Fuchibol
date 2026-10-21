@@ -1,0 +1,41 @@
+name: Docs de dbt
+
+# Publica los docs de dbt (modelos, columnas, tests, SQL y linaje) en GitHub Pages.
+# Se generan sin conectarse a BigQuery: el catálogo queda vacío, así que no muestran tipos
+# de columna ni tamaños de tabla; todo lo demás sale del proyecto.
+on:
+  push:
+    branches: [main]
+    paths: [dbt/**, scripts/dbt_offline.sh, .github/workflows/docs.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: scripts/dbt_offline.sh docs generate --empty-catalog --static
+      - run: mkdir site && cp dbt/target/static_index.html site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
