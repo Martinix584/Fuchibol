@@ -171,17 +171,18 @@ Cada corrida guarda filas, bytes y tiempos por tabla en `ops.pipeline_runs`, y e
 de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá.
 
 Primera corrida real (22/10/2026), por ahora **solo la temporada actual**: Transfermarkt, StatsBomb y BigQuery ML
-todavía no se cargaron en GCP.
+todavía no se cargaron en GCP. `ops.pipeline_runs` todavía está vacía: `make understat` no registra métricas y las
+corridas del DAG que el manifest saltea no escriben filas, así que `make metrics` muestra "sin datos" en Volumen.
 
 | Métrica | Valor |
 |---|---|
-| Filas cargadas por fuente | Understat 2026/27: 2.210 jugadores, 690 equipos-partido y 1.752 partidos (5 ligas). SofaScore: 0 (falta la carga manual) |
+| Filas cargadas por fuente | Understat 2026/27: 2.210 jugadores, 690 equipos-partido y 1.752 partidos del fixture (345 jugados), en 5 ligas. SofaScore: 0 (falta la carga manual) |
 | Volumen en GCS y BigQuery | 0,2 MB en GCS y 0,8 MB en las tablas raw |
 | Duración de `dbt build --select tag:current+` | ~40 s (49 nodos) |
 | Tests que pasan | 38/38 de la temporada actual |
 | Jugadores cruzados entre fuentes, por regla | _pendiente (requiere StatsBomb + Transfermarkt)_ |
 | Modelo ML: R² / MAE (log del valor) | _pendiente_ |
-| Costo mensual | Dentro del nivel gratuito (MB, no GB) |
+| Costo mensual | Sin medir; cada corrida procesa menos de 1 MB |
 
 ## Calidad
 
