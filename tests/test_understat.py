@@ -174,3 +174,16 @@ def test_schemas_are_valid_and_have_ingested_at():
         assert all(
             field["type"] in {"STRING", "INTEGER", "FLOAT", "BOOLEAN", "TIMESTAMP"} for field in fields
         )
+
+
+def test_main_records_ingestion_metrics(monkeypatch):
+    from ingestion import current_season, metrics, understat
+
+    loaded = [{"table": "raw_understat.matches", "rows": 3}]
+    recorded = []
+    monkeypatch.setattr("sys.argv", ["understat", "--leagues", "EPL"])
+    monkeypatch.setattr(current_season, "ensure_tables", lambda: None)
+    monkeypatch.setattr(understat, "ingest_all", lambda *a, **k: loaded)
+    monkeypatch.setattr(metrics, "record_ingestion", lambda run_id, items: recorded.append((run_id, items)))
+    understat.main()
+    assert recorded and recorded[0][0].startswith("manual__") and recorded[0][1] == loaded

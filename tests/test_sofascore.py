@@ -70,8 +70,8 @@ def test_resolve_scope():
 
 def test_mode_for_defaults():
     assert mode_for("ARG") == "full"
-    assert mode_for("EPL") == "top"
-    assert mode_for("EPL", "full") == "full"
+    assert mode_for("EPL") == "full"
+    assert mode_for("EPL", "top") == "top"
     with pytest.raises(ValueError, match="Modo desconocido"):
         mode_for("ARG", "nope")
 
@@ -254,7 +254,7 @@ def test_gcs_object_name_is_partitioned():
 def test_manifest_key_and_freshness():
     assert manifest_key("ARG", 87913, 255389) == "ARG:87913:255389"
     now = datetime.now(UTC).isoformat()
-    old = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+    old = (datetime.now(UTC) - timedelta(hours=48)).isoformat()
     assert is_fresh({"players": {"ARG:87913:1": {"fetched_at": now}}}, "ARG:87913:1")
     assert not is_fresh({"players": {"ARG:87913:1": {"fetched_at": old}}}, "ARG:87913:1")
     assert not is_fresh({}, "ARG:87913:1")
@@ -307,3 +307,16 @@ def test_fetch_raw_html_is_still_a_challenge():
     client._page = FakePage({"status": 200, "body": "<!DOCTYPE html><html>challenge</html>"})
     with pytest.raises(SofaScoreBlocked):
         client._fetch_raw("/unique-tournament/155/seasons")
+
+
+def test_main_records_ingestion_metrics(monkeypatch):
+    from ingestion import metrics, sofascore
+
+    loaded = [{"table": "raw_sofascore.player_season[ARG/1]", "rows": 25}]
+    recorded = []
+    monkeypatch.setattr("sys.argv", ["sofascore", "--scope", "ARG"])
+    monkeypatch.setattr(sofascore, "ensure_tables", lambda: None)
+    monkeypatch.setattr(sofascore, "ingest_all", lambda *a, **k: loaded)
+    monkeypatch.setattr(metrics, "record_ingestion", lambda run_id, items: recorded.append((run_id, items)))
+    sofascore.main()
+    assert recorded and recorded[0][0].startswith("manual__") and recorded[0][1] == loaded

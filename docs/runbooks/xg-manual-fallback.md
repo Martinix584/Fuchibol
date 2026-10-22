@@ -54,13 +54,14 @@ make dbt-current
 ```
 
 El resultado queda en `raw_sofascore.player_season` y se ve en `marts.mart_current_player_season` con
-`xg_source = 'sofascore'`. El staging prefiere las filas `full` sobre las `top`, así que podés empezar con
-`--mode top` y completar después sin duplicar.
+`xg_source = 'sofascore'`. El staging prefiere las filas `full` sobre las `top`. No uses `--mode top` como
+carga principal: solo trae los rankings de top-players (en Argentina, xG para 50 de 460 jugadores).
 
 ### Si se corta a mitad de camino
 
 El manifest `manifests/sofascore.json` guarda cada jugador ya bajado. Volvé a correr el mismo comando:
-saltea los que están frescos (6 horas por defecto) y sigue donde quedó. Para forzar todo:
+saltea los que están frescos (24 horas por defecto, `SOFASCORE_REFRESH_HOURS`) y sigue donde quedó,
+así que una corrida cortada por presupuesto se retoma al otro día. Para forzar todo:
 
 ```bash
 python -m ingestion.sofascore --scope ARG --mode full --force --headful
@@ -72,8 +73,13 @@ Solo si Understat no está disponible y aceptás el riesgo de SofaScore. **No ha
 fuente**: los modelos de xG de Understat y SofaScore no son comparables, así que la serie se corta.
 
 ```bash
-# 1. Bajar xG/xA de las 5 grandes (modo top: no pide minutos, menos requests).
-python -m ingestion.sofascore --scope big5 --mode top --force --headful
+# 1. Bajar xG/xA de las 5 grandes en modo full, una liga por corrida: cada liga son ~600 requests
+#    y el presupuesto por corrida es SOFASCORE_DAILY_BUDGET=1000. Sin --force, para poder retomar.
+python -m ingestion.sofascore --scope EPL --headful
+python -m ingestion.sofascore --scope La_liga --headful
+python -m ingestion.sofascore --scope Serie_A --headful
+python -m ingestion.sofascore --scope Bundesliga --headful
+python -m ingestion.sofascore --scope Ligue_1 --headful
 
 # 2. Construir los marts eligiendo SofaScore para las 5 grandes.
 cd dbt

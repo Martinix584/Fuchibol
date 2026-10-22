@@ -23,11 +23,12 @@ import argparse
 import json
 import logging
 import time
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import requests
 
-from ingestion import bq, config, storage
+from ingestion import bq, config, metrics, storage
 
 log = logging.getLogger(__name__)
 
@@ -349,6 +350,7 @@ def main() -> None:
 
     current_season.ensure_tables()
     results = ingest_all(resolve_leagues(args.leagues), args.season, args.force)
+    metrics.record_ingestion(f"manual__{uuid.uuid4().hex[:8]}", results)
     print(json.dumps(results, indent=2))
 
 

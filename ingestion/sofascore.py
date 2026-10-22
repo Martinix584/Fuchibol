@@ -7,7 +7,10 @@ Airflow ni agrega Playwright a la imagen de producción.
 
 La fuente recomendada para las 5 grandes sigue siendo Understat. SofaScore se usa:
   - siempre para Argentina (`--scope ARG`);
-  - como respaldo manual de las 5 grandes (`--scope big5 --mode top`).
+  - como respaldo manual de las 5 grandes (`--scope EPL`, una liga por corrida).
+
+Siempre en modo full: `top` solo trae los rankings de top-players (en Argentina, xG para
+50 de 460 jugadores), así que no alcanza para reemplazar a Understat.
 
 Flujo:
   1. Abre el navegador y resuelve la sesión (si hay challenge, reintenta o pide headful).
@@ -21,7 +24,7 @@ Requisitos (solo local):
     python -m playwright install chromium     # o usar Chrome del sistema
     python -m ingestion.sofascore --scope ARG --check
     python -m ingestion.sofascore --scope ARG --mode full
-    python -m ingestion.sofascore --scope big5 --mode top --force
+    python -m ingestion.sofascore --scope EPL --headful        # una liga por corrida
 
 Este módulo es opcional, manual y de bajo volumen; no se publica el raw.
 Ver docs/runbooks/xg-manual-fallback.md.
@@ -34,10 +37,11 @@ import json
 import logging
 import random
 import time
+import uuid
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-from ingestion import bq, config, storage
+from ingestion import bq, config, metrics, storage
 
 log = logging.getLogger(__name__)
 
@@ -148,8 +152,8 @@ def resolve_scope(scope: str | None = None) -> list[str]:
 
 
 def mode_for(code: str, mode: str | None = None) -> str:
-    """ARG usa full por defecto; el respaldo de las 5 grandes usa top (menos requests)."""
-    mode = mode or config.SOFASCORE_MODE or ("full" if code == "ARG" else "top")
+    """Full por defecto en todas las ligas: top solo trae los líderes de cada ranking."""
+    mode = mode or config.SOFASCORE_MODE or "full"
     if mode not in ("top", "full"):
         raise ValueError(f"Modo desconocido: {mode}. Usá top o full.")
     return mode
@@ -807,6 +811,8 @@ def main() -> None:
             args.limit,
             headless=headless,
         )
+        # ponytail: si se corta por presupuesto, lo ya cargado no queda en ops.pipeline_runs
+        metrics.record_ingestion(f"manual__{uuid.uuid4().hex[:8]}", results)
         print(json.dumps(results, indent=2))
     except (SofaScoreBlocked, BudgetExhausted, SofaScoreError, RuntimeError, ValueError) as exc:
         log.error("%s", exc)

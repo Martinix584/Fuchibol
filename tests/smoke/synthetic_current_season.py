@@ -190,7 +190,9 @@ def build(con, create_table, tmp) -> None:
         }
     ]
 
-    def sofa_row(player_id, player_name, team_id, team_name, mode, minutes, xg, xa, ingested):
+    def sofa_row(
+        player_id, player_name, team_id, team_name, mode, minutes, xg, xa, ingested, shots=30, key_passes=40
+    ):
         return {
             "league_code": "ARG",
             "league_name": "Liga Profesional Argentina",
@@ -207,9 +209,9 @@ def build(con, create_table, tmp) -> None:
             "minutes": minutes,
             "goals": 3,
             "assists": 4,
-            "shots": 30,
-            "shots_on_target": 11,
-            "key_passes": 40,
+            "shots": shots,
+            "shots_on_target": min(shots, 11),
+            "key_passes": key_passes,
             "penalty_goals": 1,
             "yellow_cards": 5,
             "red_cards": 0,
@@ -226,6 +228,10 @@ def build(con, create_table, tmp) -> None:
         sofa_row(255389, "Leandro Paredes", 3202, "Boca Juniors", "top", None, 0.30, 1.0, OLDER),
         sofa_row(255389, "Leandro Paredes", 3202, "Boca Juniors", "full", 1628, 0.3837, 1.1193, INGESTED),
         sofa_row(123456, "Equipo rival", 3203, "River Plate", "full", 1400, 0.9, 0.7, INGESTED),
+        # arquero sin tiros ni pases clave: SofaScore no manda xG/xA y el staging pone 0
+        sofa_row(777001, "Arquero sin tiros", 3203, "River Plate", "full", 1800, None, None, INGESTED, 0, 0),
+        # pateó pero no vino xG: queda null (warn de assert_ss_xg_missing_with_shots)
+        sofa_row(777002, "Sin xG con tiros", 3202, "Boca Juniors", "full", 900, None, 0.2, INGESTED, 16, 3),
     ]
 
     for table, schema, rows in [

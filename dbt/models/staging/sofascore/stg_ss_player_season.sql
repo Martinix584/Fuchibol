@@ -3,6 +3,10 @@
   Una fila por jugador y temporada. Si el mismo jugador se bajó en modo top y full,
   gana la fila full (tiene minutos y estadísticas completas), sin importar el orden
   de ingesta; dentro de cada modo gana la última ingesta.
+
+  SofaScore no manda expectedGoals/expectedAssists a quien no pateó o no dio pases clave:
+  ahí el valor real es 0. Si pateó y no vino xG, el dato falta de verdad y queda null
+  (lo cuenta el test assert_ss_xg_missing_with_shots).
 #}
 with source as (
 
@@ -38,8 +42,14 @@ select
     safe_cast(yellow_cards as int64) as yellow_cards,
     safe_cast(red_cards as int64) as red_cards,
     safe_cast(rating as float64) as rating,
-    safe_cast(expected_goals as float64) as xg,
-    safe_cast(expected_assists as float64) as xa,
+    case
+        when expected_goals is null and safe_cast(shots as int64) = 0 then 0.0
+        else safe_cast(expected_goals as float64)
+    end as xg,
+    case
+        when expected_assists is null and safe_cast(key_passes as int64) = 0 then 0.0
+        else safe_cast(expected_assists as float64)
+    end as xa,
     safe_cast(expected_goals_on_target as float64) as xg_on_target,
     cast(raw as string) as raw_json,
     _ingested_at
