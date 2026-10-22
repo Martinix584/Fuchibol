@@ -4,7 +4,7 @@
   (en Power BI hay un slicer de minutos mínimos).
 #}
 {% set totals = [
-    'shots', 'shots_on_target', 'goals', 'penalty_goals', 'headed_goals', 'xg', 'npxg', 'xa',
+    'shots', 'shots_on_target', 'goals', 'penalty_goals', 'headed_goals', 'xg', 'npxg', 'xa', 'xt_added', 'padj_tackles_interceptions',
     'passes', 'passes_completed', 'progressive_passes', 'passes_into_final_third', 'passes_into_box',
     'key_passes', 'assists', 'crosses', 'through_balls', 'carries', 'progressive_carries', 'carries_into_box',
     'dribbles_attempted', 'dribbles_completed', 'pressures', 'counterpressures', 'tackles', 'tackles_won',
@@ -12,7 +12,7 @@
     'fouls_won', 'yellow_cards', 'red_cards', 'saves'
 ] %}
 {% set per_90_columns = [
-    'goals', 'npxg', 'xa', 'shots', 'key_passes', 'progressive_passes', 'progressive_carries',
+    'goals', 'npxg', 'xa', 'xt_added', 'padj_tackles_interceptions', 'shots', 'key_passes', 'progressive_passes', 'progressive_carries',
     'passes_into_box', 'dribbles_completed', 'pressures', 'tackles_won', 'interceptions', 'ball_recoveries'
 ] %}
 
@@ -54,8 +54,13 @@ select
     round(safe_divide(player_seasons.dribbles_completed, player_seasons.dribbles_attempted), 3)
         as dribble_success,
     round(safe_divide(player_seasons.shots_on_target, player_seasons.shots), 3) as shot_accuracy,
-    id_map.tm_player_id
+    id_map.tm_player_id,
+    positions.position_group
 
 from player_seasons
 left join {{ ref('int_player_id_map') }} as id_map
     on id_map.sb_player_id = player_seasons.player_id
+left join {{ ref('int_sb_player_season_positions') }} as positions
+    on positions.player_id = player_seasons.player_id
+    and positions.competition_id = player_seasons.competition_id
+    and positions.season_id = player_seasons.season_id

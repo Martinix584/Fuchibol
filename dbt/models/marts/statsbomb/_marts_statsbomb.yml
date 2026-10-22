@@ -8,6 +8,24 @@ models:
           arguments:
             columns: [match_id, player_id]
 
+  - name: mart_sb_player_percentiles
+    description: >
+      Percentiles (0-100) de npxG, xA, xT, tiros, pases clave, pases y conducciones progresivas,
+      gambetas, presiones y PAdj quites + intercepciones cada 90, contra el mismo grupo de posición
+      en la misma competición-temporada. Solo jugadores con 600 minutos o más.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, competition_id, season_id]
+    columns:
+      - name: xt_added_pct
+        data_tests:
+          - not_null
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+
   - name: mart_sb_player_seasons
     description: >
       Un jugador por competición-temporada: goles, xG, npxG, xA, pases progresivos,
@@ -105,8 +123,6 @@ unit_tests:
           - {match_id: 2, team_id: 10, xg: 1.0, is_penalty: false, is_on_target: true}
           - {match_id: 2, team_id: 20, xg: 0.3, is_penalty: false, is_on_target: true}
     expect:
-      format: sql
-      rows: |
-        select 2 as match_id, 10 as team_id, 2.5 as xg_for, 0.3 as xg_against, 1 as points, 2.679 as xpts
-        union all
-        select 2, 20, 0.3, 2.5, 1, 0.205
+      rows:
+        - {match_id: 2, team_id: 10, xg_for: 2.5, xg_against: 0.3, points: 1, xpts: 2.679}
+        - {match_id: 2, team_id: 20, xg_for: 0.3, xg_against: 2.5, points: 1, xpts: 0.205}

@@ -69,6 +69,14 @@ carry_stats as (
 
 ),
 
+xt_stats as (
+
+    select match_id, player_id, sum(xt_added) as xt_added
+    from {{ ref('int_sb_xt_actions') }}
+    group by match_id, player_id
+
+),
+
 other_stats as (
 
     select
@@ -127,12 +135,26 @@ stat_columns as (
         {% endfor %}
         round(coalesce(shot_stats.xg, 0), 4) as xg,
         round(coalesce(shot_stats.npxg, 0), 4) as npxg,
-        round(coalesce(pass_stats.xa, 0), 4) as xa
+        round(coalesce(pass_stats.xa, 0), 4) as xa,
+        round(coalesce(xt_stats.xt_added, 0), 4) as xt_added,
+        {#
+          PAdj de StatsBomb: acciones * 2 / (1 + e^(-0.1 * (posesión - 50))). Un equipo con poca
+          pelota defiende más y suma más quites solo por eso; el ajuste lo lleva a una base de 50 %.
+          https://blogarchive.statsbomb.com/articles/soccer/introducing-possession-adjusted-player-stats/
+          (el artículo la da para quites; acá va sobre quites + intercepciones, como en sus radares).
+        #}
+        round(
+            (coalesce(other_stats.tackles, 0) + coalesce(other_stats.interceptions, 0))
+            * 2 / (1 + exp(-0.1 * (possession.possession_pct - 50))),
+            3
+        ) as padj_tackles_interceptions
     from {{ ref('int_sb_player_match_minutes') }} as minutes
     left join shot_stats using (match_id, player_id)
     left join pass_stats using (match_id, player_id)
     left join carry_stats using (match_id, player_id)
+    left join xt_stats using (match_id, player_id)
     left join other_stats using (match_id, player_id)
+    left join {{ ref('int_sb_team_match_possession') }} as possession using (match_id, team_id)
     where minutes.minutes_played > 0
 
 )

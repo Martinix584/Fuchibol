@@ -25,6 +25,27 @@ models:
               arguments:
                 values: [understat, sofascore]
 
+  - name: mart_current_player_percentiles
+    description: >
+      Percentiles (0-100) de xG, xA, npxG, tiros y pases clave cada 90 de la temporada actual,
+      contra la misma posición (G, D, M, F), liga y fuente de xG. Solo jugadores con 600 minutos o más.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_key, league_code, season]
+    columns:
+      - name: position_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [G, D, M, F]
+      - name: xg_pct
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+
   - name: mart_current_team_table
     description: >
       Tabla de equipos por liga-temporada con puntos reales, xG y xPts. Solo Understat:

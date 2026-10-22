@@ -9,6 +9,31 @@ seeds:
       - name: alias
         data_tests: [unique, not_null]
 
+  - name: xt_grid
+    description: >
+      Grilla pública de Expected Threat 12 x 8 de Karun Singh
+      (https://karun.in/blog/data/open_xt_12x8_v1.json). zone_x va de 0 (arco propio) a 11
+      (arco rival) en celdas de 10 m; zone_y de 0 a 7. Es simétrica en y.
+    config:
+      column_types: {zone_y: int64, zone_x: int64, xt: float64}
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [zone_x, zone_y]
+
+  - name: position_groups
+    description: Los 25 puestos de StatsBomb agrupados en GK, CB, FB, CM, W/AM y ST.
+    config:
+      column_types: {position_id: int64, position: string, position_group: string}
+    columns:
+      - name: position_id
+        data_tests: [unique, not_null]
+      - name: position_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [GK, CB, FB, CM, W/AM, ST]
+
   - name: player_id_overrides
     description: >
       Cruces manuales StatsBomb -> Transfermarkt. Tienen prioridad sobre el algoritmo.

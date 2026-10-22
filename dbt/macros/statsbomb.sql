@@ -18,3 +18,8 @@
 {% macro normalize_name(column) -%}
     trim(regexp_replace(regexp_replace(lower(normalize({{ column }}, NFD)), r'\p{M}', ''), r'[^a-z]+', ' '))
 {%- endmacro %}
+
+{# Zona de la grilla de xT (12 x 8 sobre 120 x 80): celdas de 10 x 10, los bordes caen en la última. #}
+{% macro xt_zone(coordinate, cells) -%}
+    least(greatest(cast(floor({{ coordinate }} / 10) as int64), 0), {{ cells - 1 }})
+{%- endmacro %}

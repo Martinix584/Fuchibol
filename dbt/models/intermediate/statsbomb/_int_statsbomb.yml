@@ -26,6 +26,27 @@ models:
                 min_value: 0
                 max_value: 150  # 120' + descuentos (en la final de 2022 hubo 21' de descuento)
 
+  - name: int_sb_player_season_positions
+    description: Grupo de posición (GK, CB, FB, CM, W/AM, ST) con más minutos por jugador y competición-temporada.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, competition_id, season_id]
+
+  - name: int_sb_team_match_possession
+    description: Posesión (%) de cada equipo por partido, por duración de los eventos. Base del PAdj.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [match_id, team_id]
+    columns:
+      - name: possession_pct
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+
   - name: int_sb_shots
     description: Tiros con xG, resultado, distancia y asistidor (sin tanda de penales).
     columns:
@@ -123,3 +144,29 @@ unit_tests:
         - {match_id: 1, team_id: 10, player_id: 200, is_starter: false, minutes_played: 24.0}
         - {match_id: 1, team_id: 10, player_id: 300, is_starter: false, minutes_played: 54.2}
         - {match_id: 1, team_id: 10, player_id: 400, is_starter: true, minutes_played: 95.6}
+
+  - name: xt_added_from_grid
+    description: >
+      Un pase completado de (55, 35) a (105, 35) va de la zona (5, 3) a la (10, 3) y suma
+      0.108051 - 0.014846. Una conducción hacia atrás resta. El pase de pelota parada y el
+      incompleto no cuentan.
+    model: int_sb_xt_actions
+    given:
+      - input: ref('int_sb_passes')
+        rows:
+          - {event_id: p1, match_id: 1, team_id: 10, player_id: 100, x: 55, y: 35, end_x: 105, end_y: 35, is_complete: true, is_set_piece: false}
+          - {event_id: p2, match_id: 1, team_id: 10, player_id: 100, x: 55, y: 35, end_x: 105, end_y: 35, is_complete: true, is_set_piece: true}
+          - {event_id: p3, match_id: 1, team_id: 10, player_id: 100, x: 55, y: 35, end_x: 105, end_y: 35, is_complete: false, is_set_piece: false}
+      - input: ref('int_sb_carries')
+        rows:
+          - {event_id: c1, match_id: 1, team_id: 10, player_id: 200, x: 25, y: 38, end_x: 5, end_y: 38}
+      - input: ref('xt_grid')
+        rows:
+          - {zone_y: 3, zone_x: 0, xt: 0.00941056}
+          - {zone_y: 3, zone_x: 2, xt: 0.01016549}
+          - {zone_y: 3, zone_x: 5, xt: 0.01484598}
+          - {zone_y: 3, zone_x: 10, xt: 0.10805102}
+    expect:
+      rows:
+        - {event_id: p1, action_type: Pass, xt_added: 0.093205}
+        - {event_id: c1, action_type: Carry, xt_added: -0.000755}
