@@ -1,6 +1,16 @@
 """Configuración central de la ingesta. Todo sale de variables de entorno (ver .env.example)."""
 
 import os
+from pathlib import Path
+
+# En local alcanza con tener el .env en la raíz del repo. En Airflow/Docker las variables ya
+# llegan exportadas (env_file), así que load_dotenv no pisa nada de lo que esté definido.
+try:
+    from dotenv import load_dotenv
+except ImportError:  # python-dotenv es opcional: sin él se usan solo las variables del entorno
+    pass
+else:
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 # Mirror público de transfermarkt-datasets (CC0): https://github.com/dcaribou/transfermarkt-datasets
 BASE_URL = os.getenv("TM_BASE_URL", "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data")
@@ -17,6 +27,11 @@ TABLES = [
 ]
 
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
+if GCP_PROJECT_ID:
+    # google-auth avisa "No project ID could be determined" porque las credenciales de usuario
+    # (ADC) no traen project_id. El cliente igual usa GCP_PROJECT_ID, pero fijamos la variable
+    # para que la librería no advierta y para los comandos que la consultan.
+    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", GCP_PROJECT_ID)
 GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 BQ_LOCATION = os.getenv("BQ_LOCATION", "US")
 BQ_RAW_DATASET = os.getenv("BQ_RAW_DATASET", "raw_transfermarkt")
@@ -110,6 +125,8 @@ SOFASCORE_PROFILE_DIR = os.getenv(
     "SOFASCORE_PROFILE_DIR", os.path.expanduser("~/.cache/fuchibol/sofascore-profile")
 )
 SOFASCORE_HEADLESS = os.getenv("SOFASCORE_HEADLESS", "true").lower() != "false"
+# Segundos que esperamos a que resuelvas el captcha en la ventana (solo con --headful).
+SOFASCORE_CAPTCHA_TIMEOUT_S = float(os.getenv("SOFASCORE_CAPTCHA_TIMEOUT_S", "300"))
 BQ_SOFASCORE_DATASET = os.getenv("BQ_SOFASCORE_DATASET", "raw_sofascore")
 GCS_SOFASCORE_PREFIX = "raw/sofascore"
 SOFASCORE_MANIFEST_BLOB = "manifests/sofascore.json"

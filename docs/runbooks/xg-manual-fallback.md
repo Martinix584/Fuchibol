@@ -16,10 +16,13 @@ repo (no se versiona el raw).
 
 ```bash
 make setup-sofascore          # instala Playwright y Chromium en .venv
-source .venv/bin/activate
+source .venv/bin/activate    # opcional: el Makefile ya usa .venv/bin/python y .venv/bin/dbt
 cp .env.example .env          # completá GCP_PROJECT_ID, GCS_BUCKET, etc.
 set -a && source .env && set +a
 ```
+
+Los comandos de Python cargan solos el `.env` de la raíz (vía `python-dotenv`) sin pisar variables ya
+exportadas. Las tareas de dbt no pasan por `ingestion`, así que ahí sí necesitás el `source .env`.
 
 Si preferís usar el Chrome del sistema, no hace falta `playwright install chromium`: el cliente intenta
 `channel="chrome"` primero y, si no está, usa el Chromium de Playwright.
@@ -27,25 +30,27 @@ Si preferís usar el Chrome del sistema, no hace falta `playwright install chrom
 ## Verificar la sesión
 
 ```bash
-python -m ingestion.sofascore --scope ARG --check --headful
+make sofascore                # equivale a python -m ingestion.sofascore --scope ARG --mode full --headful
+# o solo verificar la sesión y la temporada:
+PYTHONPATH=. .venv/bin/python -m ingestion.sofascore --scope ARG --check --headful
 ```
 
 Debe imprimir el `season_id` y el nombre de la temporada actual (por ejemplo, `Primera LPF 2026`). Si ves
-`403/challenge`:
+`403/challenge` o un captcha de Cloudflare:
 
-1. Volvé a correr con `--headful` y esperá unos segundos.
-2. Si aparece un captcha, resolvelo en la ventana del navegador.
+1. Volvé a correr con `--headful`: la ventana queda abierta en el captcha y el proceso espera a que lo
+   resuelvas (300 segundos por defecto; se cambia con `SOFASCORE_CAPTCHA_TIMEOUT_S`).
+2. No recargues ni cierres esa ventana mientras espera.
 3. No reduzcas la espera entre requests: por defecto son 3 segundos (con jitter) y 1000 requests por corrida.
 
 ## Argentina (flujo normal)
 
 ```bash
 # Baja la temporada actual completa: top-players + plantillas + una request por jugador.
-python -m ingestion.sofascore --scope ARG --mode full --headful
+make sofascore
 
-# Reconstruye los marts de la temporada actual.
-cd dbt
-dbt build --profiles-dir . --select tag:current+
+# Reconstruye los marts de la temporada actual (requiere el .env exportado).
+make dbt-current
 ```
 
 El resultado queda en `raw_sofascore.player_season` y se ve en `marts.mart_current_player_season` con

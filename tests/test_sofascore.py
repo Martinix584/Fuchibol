@@ -6,6 +6,9 @@ import pytest
 
 from ingestion import config
 from ingestion.sofascore import (
+    SofaScoreBlocked,
+    SofaScoreClient,
+    SofaScoreNotFound,
     gcs_object_name,
     is_fresh,
     manifest_key,
@@ -264,3 +267,43 @@ def test_schemas_are_valid_and_have_ingested_at():
         assert all(
             field["type"] in {"STRING", "INTEGER", "FLOAT", "BOOLEAN", "TIMESTAMP"} for field in fields
         )
+
+
+class FakePage:
+    """Reemplaza el navegador: devuelve una respuesta fija y anota la URL pedida."""
+
+    def __init__(self, result):
+        self.result = result
+        self.paths = []
+
+    def evaluate(self, script, path):
+        self.paths.append(path)
+        return self.result
+
+
+def test_fetch_raw_prefixes_api_v1():
+    client = SofaScoreClient()
+    client._page = FakePage({"status": 200, "body": '{"seasons": []}'})
+    assert client._fetch_raw("/unique-tournament/155/seasons") == {"seasons": []}
+    assert client._page.paths == ["/api/v1/unique-tournament/155/seasons"]
+
+
+def test_fetch_raw_does_not_double_prefix_api_v1():
+    client = SofaScoreClient()
+    client._page = FakePage({"status": 200, "body": "{}"})
+    client._fetch_raw("/api/v1/unique-tournament/155/seasons")
+    assert client._page.paths == ["/api/v1/unique-tournament/155/seasons"]
+
+
+def test_fetch_raw_404_is_not_found_not_challenge():
+    client = SofaScoreClient()
+    client._page = FakePage({"status": 404, "body": '{"error": {"code": 404}}'})
+    with pytest.raises(SofaScoreNotFound):
+        client._fetch_raw("/player/1/unique-tournament/155/season/87913/statistics/overall")
+
+
+def test_fetch_raw_html_is_still_a_challenge():
+    client = SofaScoreClient()
+    client._page = FakePage({"status": 200, "body": "<!DOCTYPE html><html>challenge</html>"})
+    with pytest.raises(SofaScoreBlocked):
+        client._fetch_raw("/unique-tournament/155/seasons")

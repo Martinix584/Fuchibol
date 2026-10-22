@@ -438,7 +438,6 @@ class SofaScoreClient:
                 self._browser = self._pw.chromium.launch(**launch_args)
 
             self._context = self._browser.new_context(
-                user_agent=config.UNDERSTAT_USER_AGENT + " SofaScore",
                 locale="es-AR",
                 timezone_id="America/Argentina/Buenos_Aires",
                 viewport={"width": 1366, "height": 900},
@@ -454,8 +453,16 @@ class SofaScoreClient:
         return self
 
     def ensure_session(self) -> None:
-        """Verifica que la sesión no esté en challenge; recarga hasta 3 veces."""
+        """Verifica que la sesión no esté en challenge.
+
+        Con `--headful` la ventana queda abierta en el captcha de Cloudflare y esperamos a
+        que lo resuelvas: recargar la página lo borra y volvería a empezar. Sin ventana
+        (headless) no hay quién lo resuelva, así que reintentamos recargando y fallamos.
+        """
         last_error = None
+        if not self.headless:
+            return self._wait_for_session()
+
         for attempt in range(3):
             try:
                 self._fetch_raw(f"/unique-tournament/{config.SOFASCORE_TOURNAMENTS['ARG']['id']}/seasons")
@@ -469,7 +476,38 @@ class SofaScoreClient:
             "o resolvé el captcha en la ventana del navegador."
         ) from last_error
 
+    def _wait_for_session(self) -> None:
+        """Espera a que se resuelva el captcha en la ventana visible, sin recargarla."""
+        deadline = time.monotonic() + config.SOFASCORE_CAPTCHA_TIMEOUT_S
+        notified = False
+        last_error = None
+        while True:
+            try:
+                self._fetch_raw(f"/unique-tournament/{config.SOFASCORE_TOURNAMENTS['ARG']['id']}/seasons")
+                if notified:
+                    log.info("SofaScore: captcha resuelto, sigo con la ingesta")
+                return
+            except SofaScoreBlocked as exc:
+                last_error = exc
+                if time.monotonic() >= deadline:
+                    break
+                if not notified:
+                    notified = True
+                    log.warning(
+                        "SofaScore pidió captcha: resolvelo en la ventana de Chrome (espero hasta %d s).",
+                        config.SOFASCORE_CAPTCHA_TIMEOUT_S,
+                    )
+                self._page.wait_for_timeout(3_000)
+        raise SofaScoreBlocked(
+            "Se acabó el tiempo de espera del captcha. Volvé a correr `make sofascore` y "
+            "resolvelo en la ventana, o subí SOFASCORE_CAPTCHA_TIMEOUT_S."
+        ) from last_error
+
     def _fetch_raw(self, path: str) -> dict:
+        # La API interna de SofaScore vive bajo /api/v1; las rutas del módulo se escriben
+        # sin el prefijo para que se lean como documentación.
+        if not path.startswith("/api/"):
+            path = f"/api/v1{path}"
         result = self._page.evaluate(
             """
             async (url) => {
@@ -493,10 +531,10 @@ class SofaScoreClient:
             path,
         )
         status, body = result["status"], result["body"]
-        if status == 403 or '"challenge"' in body or body.lstrip().startswith("<"):
-            raise SofaScoreBlocked(f"SofaScore 403/challenge en {path}")
         if status == 404:
             raise SofaScoreNotFound(f"SofaScore 404 en {path}")
+        if status == 403 or '"challenge"' in body or body.lstrip().startswith("<"):
+            raise SofaScoreBlocked(f"SofaScore 403/challenge en {path}")
         if status != 200:
             raise SofaScoreError(f"SofaScore {status} en {path}: {body[:200]}")
         try:
