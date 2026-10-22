@@ -1,0 +1,119 @@
+# Hoja de ruta: Fuchibol como sistema de datos de un club
+
+> Plan a futuro, todavía **sin implementar**. Está pensado para leerse de punta a punta antes de tocar
+> código. Las decisiones de la sección 2 ya se discutieron con el usuario: no rediscutirlas.
+>
+> **Estado (octubre 2026):** el pipeline histórico (Transfermarkt + StatsBomb) y la temporada actual
+> (Understat) andan. En GCP solo corrió la temporada actual; Transfermarkt, StatsBomb y BigQuery ML
+> todavía no se cargaron. SofaScore quedó bloqueado por su challenge antibots y no se intenta esquivar.
+
+## 1. Objetivo
+
+Llevar Fuchibol de "buen proyecto de Data Engineering" a "el sistema que un Director de Datos querría tener
+andando mañana", pensando en departamentos de datos de clubes (River, Talleres, Racing, Estudiantes, MLS,
+Brasil, Europa) y consultoras de scouting (Driblab, StatsBomb, Zelus, SRC).
+
+Lo que ya diferencia al proyecto: ingesta automática de varios proveedores, cruce de IDs sin romper nada,
+esquemas versionados y tablas listas para que el analista o el director deportivo las consuman a primera hora.
+Lo que falta: **métricas en el idioma del scouting**, **números reales en el README** y **algo que se pueda
+tocar sin instalar nada**.
+
+## 2. Decisiones ya tomadas (no rediscutir)
+
+- **Cruce de jugadores sin club.** El escalón nuevo de `int_player_id_map` **no** exige "mismo club": gran
+  parte del alcance `core` son selecciones (en StatsBomb el equipo es "Argentina", no el club) y no existe un
+  `int_club_id_map`. Se usa nacionalidad + año de actividad solapado + Levenshtein ≤ 2.
+- **No hay fecha de nacimiento en StatsBomb.** Las alineaciones de StatsBomb Open Data no la traen, así que
+  no se puede usar como clave del cruce StatsBomb → Transfermarkt.
+- **Grupo de posición por minutos, desde las alineaciones.** `stg_sb_lineups` ya guarda el array
+  `positions` completo y `int_sb_player_match_minutes` ya lo despliega en tramos. Se suman segundos por
+  puesto; no se usa la moda de los eventos (cuenta toques, no tiempo, y BigQuery no tiene `MODE()`).
+- **Nada de métricas sacadas del smoke.** El smoke usa un Transfermarkt **sintético**: el cruce por regla,
+  el R²/MAE y cualquier cosa de fichajes tienen que salir de la carga real en GCP.
+- **La app pública lee datos reales**, exportados de BigQuery, nunca el `.duckdb` del smoke.
+- **Club Elo cubre solo Europa** (no Argentina, Brasil ni MLS): sirve para ponderar dentro de Europa, no las
+  ventas de la liga argentina.
+- **Capturas y Parquet al final.** Power BI, capturas y exportación se hacen recién cuando estén xT, PAdj y
+  percentiles, para no hacerlos dos veces.
+- **SofaScore no se fuerza.** Para Argentina actual, la vía es API-Football (ver
+  `docs/plans/datos-actuales-api-football-understat.md`).
+
+## 3. Etapa 1: números reales (1-2 días)
+
+1. **`make understat` registra métricas.** `ingestion/understat.py:main()` hoy no llama a
+   `metrics.record_ingestion`, así que `ops.pipeline_runs` queda vacía. Sumarlo (con un `run_id` tipo
+   `manual__xxxx`, como `scripts/run_ingestion.py`). Test: que `main` llame a `record_ingestion`.
+2. **Carga real en GCP:** `make extract` (Transfermarkt + StatsBomb `core` + Understat), `make dbt-build`,
+   `make dbt-train`. El alcance `core` entra en el nivel gratuito; configurar alerta de presupuesto antes.
+3. **Completar la tabla de métricas del README** con `make metrics`: filas por fuente, volumen, duración,
+   tests, **cruce por regla** y **R²/MAE** del modelo (el MAE está en log del valor: aclararlo o
+   convertirlo a euros con cuidado).
+
+## 4. Etapa 2: métricas de fútbol (1 fin de semana)
+
+### 4.1 xT (Expected Threat)
+
+- Seed `dbt/seeds/xt_grid.csv` con la grilla pública de Karun Singh (12 × 8 zonas sobre la cancha
+  120 × 80 de StatsBomb). Citar la fuente en el seed y en el README.
+- Macro `xt_zone(x, y)` → índice de zona; `xt_added = xt(end) - xt(start)`.
+- Pases: `int_sb_passes` ya tiene `x, y, end_x, end_y`; solo pases completados.
+- Conducciones: **no existe `int_sb_carries`**; crearlo desde `stg_sb_events` (`carry_detail.end_location`).
+- Mart: `xt_added`, `xt_added_per_90` por jugador-temporada en `mart_sb_player_seasons`.
+- Unit test de dbt: un pase de una zona conocida a otra da el delta esperado.
+
+### 4.2 Grupo de posición
+
+- Agregar el nombre del puesto al CTE de tramos de `int_sb_player_match_minutes` y sumar segundos por puesto
+  **antes** de unir intervalos superpuestos.
+- Mapear a 6 grupos: GK, CB, FB, CM, W/AM, ST (seed `position_groups.csv` desde los nombres de StatsBomb).
+- `position_group` = el grupo con más minutos del jugador en la temporada.
+
+### 4.3 PAdj (ajuste por posesión) para acciones defensivas
+
+- Posesión por partido desde `stg_sb_events` (`possession`, `possession_team_id` y duración de cada
+  posesión).
+- Ajustar quites, intercepciones y presiones por la posesión del rival (fórmula sigmoide de StatsBomb para
+  PAdj Tackles & Interceptions). Documentar en el README por qué: un defensor de un equipo con 35 % de
+  posesión suma el doble de acciones solo porque defiende más.
+
+### 4.4 Percentiles por posición
+
+- Vista con `round(percent_rank() over (partition by competition_id, season_id, position_group order by
+  metric_per_90) * 100)` para 8-10 métricas clave (npxG, xA, xT, pases y conducciones progresivas, PAdj
+  defensivas, presiones), solo jugadores con ≥ 600 minutos.
+- Alimenta los radares de Power BI y de la app.
+
+## 5. Etapa 3: producto (1-2 semanas)
+
+1. **Power BI:** actualizar el reporte con xT, percentiles y PAdj; capturas definitivas + GIF corto, y una
+   captura del grafo de linaje de dbt docs (<https://martinix584.github.io/Fuchibol/>).
+2. **Exportar los marts a Parquet** desde BigQuery (datos reales) para la app.
+3. **App pública** (Evidence.dev o Streamlit Community Cloud) sobre esos Parquet con DuckDB: radar de
+   comparación de jugadores, buscador de subvaluados, ROI de fichajes y mapa de tiros. Link arriba de todo
+   en el README.
+   - Ojo con el filtro "Sub-23 de la Liga Argentina": StatsBomb Open Data no tiene liga argentina, así que
+     ahí solo hay datos de Transfermarkt (sin xG).
+   - Revisar licencias antes de publicar: StatsBomb pide atribución; Transfermarkt es CC0.
+4. **SkillCorner Open Data** (`skillcorner/opendata`, ~10 partidos de tracking a 10 fps) como módulo aparte,
+   en DuckDB/Parquet por volumen: sprints (> 25 km/h), HSR y aceleraciones por jugador y partido.
+
+## 6. Etapa 4: refinamientos
+
+- **Escalón 6 del cruce de jugadores** (después de `name_only`): nombre normalizado sin tildes
+  (`normalize(..., NFD)` + quitar marcas) + misma nacionalidad + algún año en común (`match_date` de
+  StatsBomb vs. `game_date` de `stg_appearances`) + `edit_distance <= 2`, y **único** en ese año (si hay dos
+  candidatos, se descarta como en las demás reglas). Medir cuánto sube el cruce; no prometer un porcentaje.
+- **Club Elo** (clubelo.com, CSV público) como tabla liviana en el DAG para ponderar `mart_transfer_roi` y el
+  modelo de BigQuery ML **solo para fichajes entre clubes europeos** (ΔElo).
+- **Modelos incrementales en dbt:** `stg_sb_events` hoy es `table` clusterizada por `match_id, event_type`.
+  Pasarla a `incremental` con `insert_overwrite` recién cuando se cargue el alcance `all`; con `core` la
+  ganancia es chica.
+
+## 7. Criterios de aceptación
+
+- [ ] `ops.pipeline_runs` tiene filas después de `make understat` y de cada corrida del DAG con datos nuevos.
+- [ ] La tabla de métricas del README no tiene ningún *pendiente* y todos sus números salen de GCP.
+- [ ] `xt_added_per_90`, `position_group`, métricas PAdj y percentiles en los marts, con tests de dbt.
+- [ ] Smoke y CI en verde después de cada etapa.
+- [ ] Capturas de Power BI y del linaje en el README, tomadas después de la etapa 2.
+- [ ] App pública con datos reales y link en el README.
