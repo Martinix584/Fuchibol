@@ -334,7 +334,7 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 - [ ] Primera carga de SofaScore Argentina (`make sofascore`).
 - [ ] Cargar Transfermarkt y StatsBomb en GCP, entrenar BigQuery ML y completar la tabla de métricas.
 - [ ] Armar el reporte de Power BI (guía en [`powerbi/`](powerbi/README.md)) y subir capturas y un GIF.
-- [ ] Publicar los docs de dbt en GitHub Pages.
+- [x] Publicar los docs de dbt en GitHub Pages: <https://martinix584.github.io/Fuchibol/>.
 - [ ] Sumar los datos 360 de StatsBomb (posición de todos los jugadores en cada evento) para métricas de presión.
 
 ---
