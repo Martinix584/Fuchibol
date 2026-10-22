@@ -109,7 +109,47 @@ tocar sin instalar nada**.
   Pasarla a `incremental` con `insert_overwrite` recién cuando se cargue el alcance `all`; con `core` la
   ganancia es chica.
 
-## 7. Criterios de aceptación
+## 7. Validar los modelos de xG con datos propios
+
+Understat y SofaScore **no usan el mismo modelo de xG**:
+- **Understat** usa un modelo propio, entrenado con más de 100.000 tiros.
+- **SofaScore** no publica su metodología. Se infiere que muestra el xG de Opta porque coincide con el de
+  FotMob, pero es una inferencia, no algo que ellos confirmen.
+
+Los números difieren por varias razones: el modelo, qué cuenta cada uno como tiro (bloqueos, desvíos, goles
+en contra), las coordenadas de cada remate (hay diferencias de metros entre proveedores) y el tratamiento de
+los penales. Por eso `mart_current_player_season` tiene `xg_source` y nunca mezcla fuentes en una fila:
+`goals - xg` se puede comparar dentro de una fuente, no entre fuentes. Esta sección **mide** esa
+diferencia en vez de suponerla.
+
+### 7.1 Understat vs. StatsBomb (se puede hacer ya)
+
+- Las dos fuentes cubren las 5 grandes en **2015/16**: StatsBomb Open Data tiene esa temporada (cuatro ligas
+  completas) y Understat cubre desde 2014/15.
+- Backfill de Understat para esa temporada: `UNDERSTAT_SEASON=2015` o `--season 2015` (5 requests).
+- Script `scripts/compare_xg.py` (o un análisis dbt con tag `validation`, fuera de `tag:current`) que cruce
+  jugador × liga-temporada y reporte, por liga:
+  - suma de xG de cada fuente y diferencia porcentual;
+  - correlación (Pearson) entre fuentes por jugador;
+  - diferencia media absoluta;
+  - % de jugadores donde difieren más de 0,5 xG;
+  - cobertura: tiros y jugadores que hay en una fuente y faltan en la otra.
+- El cruce de jugadores entre StatsBomb y Understat es otro problema de identidad: reusar la normalización
+  de nombres de `int_player_id_map` (nombre sin tildes + equipo + temporada) y descartar los ambiguos.
+  Equipo sí sirve acá, porque las dos fuentes son de clubes y de la misma liga.
+- Resultado al README, en "Sobre los datos": cuánto se separan los dos modelos de xG.
+
+### 7.2 Understat vs. SofaScore (solo si SofaScore vuelve a estar accesible)
+
+- Hoy SofaScore responde con un challenge antibots y **no se intenta esquivarlo**. Esta comparación queda
+  condicionada a poder bajar los datos sin forzar nada.
+- Si se puede: ingerir una liga grande con `python -m ingestion.sofascore --scope big5 --mode full` (cientos
+  de requests, respetando `SOFASCORE_DAILY_BUDGET`) y aplicar las mismas métricas de 7.1 contra Understat,
+  mismos jugadores y misma temporada.
+- Sirve para decidir con números si el respaldo manual (`xg_source_big5: sofascore`) es intercambiable con
+  Understat o si cambia las conclusiones.
+
+## 8. Criterios de aceptación
 
 - [ ] `ops.pipeline_runs` tiene filas después de `make understat` y de cada corrida del DAG con datos nuevos.
 - [ ] La tabla de métricas del README no tiene ningún *pendiente* y todos sus números salen de GCP.
@@ -117,3 +157,5 @@ tocar sin instalar nada**.
 - [ ] Smoke y CI en verde después de cada etapa.
 - [ ] Capturas de Power BI y del linaje en el README, tomadas después de la etapa 2.
 - [ ] App pública con datos reales y link en el README.
+- [ ] Comparación Understat vs. StatsBomb (2015/16) con correlación, diferencia media y cobertura por liga,
+      resumida en el README.
