@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml/badge.svg)](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml)
 
-Pipeline de datos de fútbol de punta a punta: **Python → GCS → BigQuery → dbt → BigQuery ML → Airflow → Power BI**,
+Pipeline de datos de fútbol de punta a punta: **Python → GCS → BigQuery → dbt → scikit-learn → Airflow → Power BI**,
 con cuatro fuentes:
 
 - **Transfermarkt** ([transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), CC0): más de 50.000
@@ -21,7 +21,7 @@ con cuatro fuentes:
 |---|---|---|
 | **¿Valió lo que se pagó?** Cada fichaje contra lo que pasó después: minutos, goles y asistencias cada 90 y cuánto valía el jugador un año más tarde | Transfermarkt | `mart_transfer_roi`, `mart_club_transfer_balance` |
 | **Argentina, fábrica de jugadores.** A dónde se van los argentinos que vende la liga local y cuánto se revalorizan | Transfermarkt | `mart_argentina_exports` |
-| **¿Quién está subvaluado?** BigQuery ML estima cuánto "debería" valer cada jugador por su rendimiento | Transfermarkt | `mart_undervalued_players` |
+| **¿Quién está subvaluado?** Un modelo de ML estima cuánto "debería" valer cada jugador por su rendimiento | Transfermarkt | `mart_undervalued_players` |
 | **¿Quién genera más de lo que muestra?** xG, xA, pases y conducciones progresivas, presiones, todo cada 90 | StatsBomb | `mart_sb_player_seasons`, `fct_sb_shots` |
 | **¿Quién tuvo suerte?** Tabla real contra tabla por puntos esperados (xPts) | StatsBomb | `mart_sb_team_seasons` |
 | **¿Quién rinde hoy en las 5 grandes?** xG, xA y npxG de la temporada en curso, con la fuente marcada | Understat | `mart_current_player_season`, `mart_current_team_table` |
@@ -50,7 +50,7 @@ flowchart LR
     STG --> INT[dbt intermediate<br/>minutos, tiros, pases,<br/>fichajes, xG actual]
     STG --> SNAP[snapshot<br/>historial de valores]
     INT --> MARTS[dbt marts]
-    INT --> ML[BigQuery ML]
+    INT --> ML[scikit-learn<br/>modelo de valor]
     MARTS --> PBI[Power BI]
     ML --> PBI
     OPS[(ops: métricas<br/>del pipeline)] --> PBI
@@ -84,7 +84,7 @@ flowchart LR
 
 ## Modelo de datos (dbt)
 
-47 modelos en 4 capas, 2 seeds, 1 snapshot, 156 data tests, 4 unit tests y 1 exposure (el reporte).
+53 modelos en 4 capas, 4 seeds, 1 snapshot, 171 data tests, 5 unit tests y 1 exposure (el reporte).
 
 ```mermaid
 flowchart LR
@@ -93,13 +93,15 @@ flowchart LR
         stg_appearances --> int_player_season_stats --> int_player_value_features
         int_transfers_enriched --> mart_transfer_roi & mart_argentina_exports
         int_player_value_features --> mart_player_seasons
-        int_player_value_features --> ML[BigQuery ML] --> mart_undervalued_players
+        int_player_value_features --> ML[scikit-learn] --> mart_undervalued_players
     end
     subgraph StatsBomb
-        stg_sb_events --> int_sb_shots & int_sb_passes
-        stg_sb_lineups --> int_sb_player_match_minutes
-        int_sb_shots & int_sb_passes & int_sb_player_match_minutes --> int_sb_player_match_stats
+        stg_sb_events --> int_sb_shots & int_sb_passes & int_sb_carries & int_sb_team_match_possession
+        int_sb_passes & int_sb_carries --> int_sb_xt_actions
+        stg_sb_lineups --> int_sb_player_match_minutes & int_sb_player_season_positions
+        int_sb_shots & int_sb_passes & int_sb_xt_actions & int_sb_team_match_possession & int_sb_player_match_minutes --> int_sb_player_match_stats
         int_sb_player_match_stats --> mart_sb_player_seasons
+        int_sb_player_season_positions --> mart_sb_player_seasons --> mart_sb_player_percentiles
         int_sb_shots --> fct_sb_team_matches --> mart_sb_team_seasons
     end
     stg_sb_lineups & stg_players --> int_player_id_map
@@ -108,7 +110,7 @@ flowchart LR
         stg_us_players_season --> int_us_player_season
         stg_us_team_matches --> int_us_team_season --> mart_current_team_table
         stg_ss_player_season --> int_ss_player_season
-        int_us_player_season & int_ss_player_season --> mart_current_player_season
+        int_us_player_season & int_ss_player_season --> mart_current_player_season --> mart_current_player_percentiles
     end
 ```
 
@@ -120,14 +122,27 @@ Lo que tiene de interesante cada parte:
 - **Métricas de scouting** (`int_sb_passes`, `int_sb_player_match_stats`): npxG, xA (el xG de los tiros que generó
   cada pase), pases y conducciones progresivas, pases al área, presiones, quites, intercepciones y más. Todas con
   criterios explícitos y documentados.
+- **xT, Expected Threat** (`int_sb_xt_actions`): cuánto acerca al gol cada pase completado y cada conducción,
+  con la grilla pública 12 × 8 de [Karun Singh](https://karun.in/blog/expected-threat.html) cargada como seed.
+  Mide a los que mueven la pelota a zonas peligrosas aunque no den el último pase. Lo cubre un unit test.
+- **PAdj quites + intercepciones** (`int_sb_team_match_possession`): un defensor de un equipo con poca pelota
+  suma más quites solo porque defiende más. Se ajusta con la fórmula sigmoide de
+  [StatsBomb](https://blogarchive.statsbomb.com/articles/soccer/introducing-possession-adjusted-player-stats/)
+  sobre la posesión del equipo en cada partido.
+- **Percentiles por posición** (`mart_sb_player_percentiles`, `mart_current_player_percentiles`): cada métrica cada
+  90 contra los del mismo grupo de posición (GK, CB, FB, CM, W/AM, ST, por minutos en cada puesto) en la misma
+  competición, con 600 minutos o más. En la temporada actual, por liga y por fuente de xG, sin mezclarlas.
 - **xPts** (`fct_sb_team_matches`): con el xG de cada equipo como media de una Poisson, calcula la probabilidad de
   cada marcador de 0-0 a 15-15 y de ahí los puntos esperados. Lo cubre un unit test con el resultado calculado aparte.
 - **Cruce de identidades** (`int_player_id_map`): StatsBomb y Transfermarkt no comparten ids. Lo resuelven reglas
   de más estricta a menos estricta (nombre + nacionalidad, nombre completo, palabras contenidas, solo nombre) que
   descartan los casos ambiguos en vez de cruzarlos mal, más un seed de cruces manuales.
 - **Veredicto de cada fichaje** (`mart_transfer_roi`): reglas simples y explícitas, cubiertas por un unit test.
-- **Modelo de BigQuery ML**: un *boosted tree* que aprende el valor de mercado de temporadas pasadas y predice la
-  última, que no vio al entrenar. Las variables están definidas una sola vez en `macros/ml.sql`.
+- **Modelo de valor de mercado** (`ingestion/ml.py`): un *boosted tree* de scikit-learn que aprende el valor de
+  mercado de temporadas pasadas y predice la última, que no vio al entrenar. La idea era BigQuery ML, pero para
+  este proyecto no valía la pena: factura cada vuelta del entrenamiento sobre la tabla, y una tabla de 27 MB
+  contaba como más de 20 GB. Con scikit-learn se entrena en segundos y gratis, y las predicciones vuelven a
+  BigQuery (dataset `ml`) para que dbt arme `mart_undervalued_players`.
 - **xG de la temporada actual sin mezclar fuentes** (`mart_current_player_season`): las 5 grandes salen de Understat
   y Argentina de SofaScore. Cada fila lleva `xg_source`; no hay fallback automático entre fuentes porque los modelos
   de xG no son comparables. El respaldo manual se activa con `--vars '{xg_source_big5: sofascore}'`.
@@ -143,8 +158,8 @@ En CI corre con los últimos 8 partidos del Mundial 2022; localmente, con el tor
 |---|---|
 | Partidos / eventos cargados | 64 / 234.637 |
 | Pases / tiros / jugador-partido | 68.515 / 1.453 / 1.995 |
-| Data tests que pasan | **152 de 152** (los 4 restantes dependen de BigQuery ML o del snapshot) |
-| Duración total (carga + 43 modelos + tests) | ~50 s |
+| Data tests que pasan | **166 de 167** y 1 aviso a propósito (un jugador sintético que pateó sin xG); los del modelo de ML o del snapshot no corren en DuckDB |
+| Duración total (carga + modelos + tests) | ~36 s |
 
 Los resultados coinciden con lo que pasó en la cancha:
 
@@ -170,19 +185,18 @@ BigQuery contra 606.713 eventos reales de las 67 competiciones-temporada masculi
 Cada corrida guarda filas, bytes y tiempos por tabla en `ops.pipeline_runs`, y el resultado de cada modelo y test
 de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá.
 
-Primera corrida real (22/10/2026), por ahora **solo la temporada actual**: Transfermarkt, StatsBomb y BigQuery ML
-todavía no se cargaron en GCP. `ops.pipeline_runs` todavía está vacía: `make understat` no registra métricas y las
-corridas del DAG que el manifest saltea no escriben filas, así que `make metrics` muestra "sin datos" en Volumen.
+Primera carga completa en GCP (22/10/2026): Transfermarkt, StatsBomb (alcance `core`), Understat y SofaScore
+Argentina, más el modelo de valor de mercado entrenado en local con scikit-learn.
 
 | Métrica | Valor |
 |---|---|
-| Filas cargadas por fuente | Understat 2026/27: 2.210 jugadores, 690 equipos-partido y 1.752 partidos del fixture (345 jugados), en 5 ligas. SofaScore: 0 (falta la carga manual) |
-| Volumen en GCS y BigQuery | 0,2 MB en GCS y 0,8 MB en las tablas raw |
-| Duración de `dbt build --select tag:current+` | ~40 s (49 nodos) |
-| Tests que pasan | 38/38 de la temporada actual |
-| Jugadores cruzados entre fuentes, por regla | _pendiente (requiere StatsBomb + Transfermarkt)_ |
-| Modelo ML: R² / MAE (log del valor) | _pendiente_ |
-| Costo mensual | Sin medir; cada corrida procesa menos de 1 MB |
+| Filas cargadas por fuente | Transfermarkt: 50.149 jugadores, 1,89 M apariciones, 656.301 valuaciones y 175.165 transferencias. StatsBomb: 348 partidos y 1,24 M eventos. Understat 2026/27: 2.210 jugadores en 5 ligas. SofaScore: 839 jugadores de la Liga Profesional 2026 |
+| Volumen | 160 MB en GCS y 1,4 GB en BigQuery |
+| Duración de `dbt build` (sin ML ni temporada actual) | ~3 min (173 nodos) |
+| Data tests | Build principal: 120 pasan y 4 avisos. Temporada actual: 42 pasan y 1 aviso (los 86 jugadores de SofaScore que patearon sin xG). Ningún error |
+| Jugadores cruzados StatsBomb → Transfermarkt | 2.551 de 3.080 (82,8 %): 2.218 nombre + nacionalidad, 167 palabras contenidas, 116 solo nombre, 49 nombre completo, 1 manual |
+| Modelo ML: R² / MAE (log del valor) | R² 0,83, MAE 0,46 y error mediano 0,37 sobre 10.072 filas de evaluación (≈ ×1,6 de error típico en el valor). Leyó 54.463 temporadas-jugador y entrenó con 40.285 en 43 s; predice 4.106 jugadores de 2025 |
+| Costo mensual | Sin medir |
 
 ## Calidad
 
@@ -227,6 +241,19 @@ corridas del DAG que el manifest saltea no escriben filas, así que `make metric
   [`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
 - **No se mezclan fuentes de xG.** Understat y SofaScore usan modelos distintos; cada fila de
   `mart_current_player_season` lleva `xg_source`. El respaldo de las 5 grandes es manual, nunca automático.
+- **Cuánto se separan dos modelos de xG, medido.** Understat contra StatsBomb, mismos jugadores, temporada
+  2015/16 (`scripts/compare_xg.py`, sin GCP):
+
+  | Liga | Jugadores cruzados | xG StatsBomb | xG Understat | Diferencia | Correlación | Dif. media por jugador | Jugadores con > 0,5 xG de diferencia |
+  |---|---|---|---|---|---|---|---|
+  | Premier League | 533 | 949,7 | 970,6 | +2,2 % | 0,991 | 0,24 | 14,1 % |
+  | La Liga | 515 | 950,2 | 1.034,5 | +8,9 % | 0,992 | 0,28 | 14,2 % |
+  | Serie A | 535 | 905,4 | 954,8 | +5,5 % | 0,994 | 0,21 | 13,5 % |
+  | Ligue 1 | 562 | 856,3 | 909,2 | +6,2 % | 0,990 | 0,22 | 12,6 % |
+
+  Los cruzados cubren el 97-98 % del xG de StatsBomb de cada liga. El orden de los jugadores casi no cambia
+  (correlación ≥ 0,99), pero Understat da entre 2 % y 9 % más xG y uno de cada siete jugadores se mueve más de
+  medio gol en la temporada. La Bundesliga queda afuera: StatsBomb trae solo 34 partidos de esa temporada.
 - Las métricas cada 90 de jugadores con pocos minutos no son confiables: filtrá por minutos.
 - Simplificación: las temporadas de Transfermarkt se cierran el 30 de junio; en ligas de calendario anual (como la
   argentina) eso corre la ventana medio año.
@@ -261,7 +288,7 @@ gcloud auth application-default login
 
 make extract        # primera carga de las fuentes (Transfermarkt + StatsBomb + Understat)
 make dbt-build      # seeds, modelos históricos, snapshot, data tests y unit tests
-make dbt-train      # BigQuery ML
+make dbt-train      # modelo de valor de mercado (scikit-learn en local) + sus tablas
 make dbt-current    # marts de la temporada actual (Understat + Argentina si hay SofaScore)
 make dbt-docs       # documentación y linaje en http://localhost:8081
 make airflow-up     # Airflow en http://localhost:8080 (en Linux, antes: AIRFLOW_UID=$(id -u) en .env)
@@ -285,7 +312,7 @@ make dbt-current                           # reconstruye los marts de la tempora
 Si algún día Understat falla y querés usar el respaldo de SofaScore para las 5 grandes:
 
 ```bash
-python -m ingestion.sofascore --scope big5 --mode top --force
+python -m ingestion.sofascore --scope EPL --headful    # una liga por corrida (repetir con las otras 4)
 cd dbt && dbt build --profiles-dir . --vars '{xg_source_big5: sofascore}' --select tag:current+
 ```
 

@@ -10,6 +10,9 @@
 > en el DAG diario `fuchibol_current_season`. Para Argentina se eligió **SofaScore**, opcional y
 > local/manual, no API-Football. API-Football sigue pendiente: necesita una API key y no es
 > necesario para xG. Ver `docs/runbooks/xg-manual-fallback.md` y `ingestion/understat.py`.
+>
+> **Actualización:** el modelo de valor de mercado ya no usa BigQuery ML; se entrena con
+> scikit-learn (`ingestion/ml.py`). El resto del documento se deja como plan histórico.
 
 ## 1. Contexto
 

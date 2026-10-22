@@ -1,11 +1,18 @@
 # Hoja de ruta: Fuchibol como sistema de datos de un club
 
-> Plan a futuro, todavía **sin implementar**. Está pensado para leerse de punta a punta antes de tocar
+> **Avance (22/10/2026):** etapas 1 y 2 implementadas y la 7.1 medida (ver criterios al final). Modelo de valor entrenado en local
+> con scikit-learn (R² 0,83; la idea era BigQuery ML, pero no valía la pena acá). Pendiente: etapa 3 (Power BI, app, SkillCorner), etapa 4 y la 7.2.
+>
+> Plan a futuro. Está pensado para leerse de punta a punta antes de tocar
 > código. Las decisiones de la sección 2 ya se discutieron con el usuario: no rediscutirlas.
 >
 > **Estado (octubre 2026):** el pipeline histórico (Transfermarkt + StatsBomb) y la temporada actual
-> (Understat) andan. En GCP solo corrió la temporada actual; Transfermarkt, StatsBomb y BigQuery ML
-> todavía no se cargaron. SofaScore (Argentina) se carga a mano con `make sofascore`.
+> (Understat + SofaScore) andan. En GCP solo corrió la temporada actual; Transfermarkt, StatsBomb y
+> el modelo de valor todavía no se cargaron.
+>
+> **SofaScore Argentina cargado (22/10/2026)** con `make sofascore` (modo `full`): Primera LPF 2026,
+> 30 equipos, 839 jugadores (62 G, 276 D, 317 M, 184 F), 554 xG en total. `make dbt-current` pasa 48/48 y
+> `mart_current_player_season` ya tiene filas `ARG` con `xg_source = 'sofascore'`.
 
 ## 1. Objetivo
 
@@ -40,12 +47,29 @@ tocar sin instalar nada**.
 
 ## 3. Etapa 1: números reales (1-2 días)
 
-1. **`make understat` registra métricas.** `ingestion/understat.py:main()` hoy no llama a
-   `metrics.record_ingestion`, así que `ops.pipeline_runs` queda vacía. Sumarlo (con un `run_id` tipo
-   `manual__xxxx`, como `scripts/run_ingestion.py`). Test: que `main` llame a `record_ingestion`.
-2. **Carga real en GCP:** `make extract` (Transfermarkt + StatsBomb `core` + Understat), `make dbt-build`,
+1. **`make understat` y `make sofascore` registran métricas.** Ni `ingestion/understat.py:main()` ni
+   `ingestion/sofascore.py` llaman a `metrics.record_ingestion`, así que `ops.pipeline_runs` queda vacía
+   (la carga de Argentina del 22/10 tampoco quedó registrada). Sumarlo en los dos (con un `run_id` tipo
+   `manual__xxxx`, como `scripts/run_ingestion.py`). Test: que cada `main` llame a `record_ingestion`.
+2. **xG nulo en SofaScore Argentina** (200 de 839 jugadores). SofaScore directamente no manda
+   `expectedGoals` para esos jugadores (verificado en el JSON crudo: el scraper no pierde nada). Hay dos
+   casos distintos:
+   - **114 sin ningún tiro** (arqueros, defensores): xG real = 0. En `stg_ss_player_season`, poner
+     `xg = 0` cuando `shots = 0` y no venga el dato, así entran a los per-90 y percentiles.
+   - **86 con tiros pero sin xG** (ej. Federico Gino, Aldosivi: 16 tiros, 2 goles): el dato falta de
+     verdad. Dejarlo `null` (no inventar) y agregar un test de dbt con `severity: warn` que cuente cuántos
+     hay, para ver si baja en cargas futuras.
+   - Mismo criterio para `xa` (`expectedAssists`).
+3. **El respaldo de las 5 grandes en modo `top` casi no trae xG.** `top` une los rankings de
+   `top-players/overall`, y el de xG lista unos 50 jugadores por liga: en Argentina, 410 de 460 filas `top`
+   vinieron sin xG. Con `xg_source_big5: sofascore` + `--mode top`, el mart quedaría con xG solo para los
+   líderes. Cambiar el runbook (`docs/runbooks/xg-manual-fallback.md`), el docstring de
+   `ingestion/sofascore.py` y el default de `SOFASCORE_MODE` para las 5 grandes a `full`, partido por liga
+   en varios días por el presupuesto (ver 7.2). Otra opción es dejar `top` documentado como "solo
+   líderes", pero entonces no sirve como reemplazo de Understat.
+4. **Carga real en GCP:** `make extract` (Transfermarkt + StatsBomb `core` + Understat), `make dbt-build`,
    `make dbt-train`. El alcance `core` entra en el nivel gratuito; configurar alerta de presupuesto antes.
-3. **Completar la tabla de métricas del README** con `make metrics`: filas por fuente, volumen, duración,
+5. **Completar la tabla de métricas del README** con `make metrics`: filas por fuente, volumen, duración,
    tests, **cruce por regla** y **R²/MAE** del modelo (el MAE está en log del valor: aclararlo o
    convertirlo a euros con cuidado).
 
@@ -78,7 +102,11 @@ tocar sin instalar nada**.
 
 ### 4.4 Percentiles por posición
 
-- Vista con `round(percent_rank() over (partition by competition_id, season_id, position_group order by
+- Para Argentina (temporada actual) se puede hacer **ya**, sin esperar a StatsBomb: SofaScore trae
+  `position` (G, D, M, F) y minutos. Percentiles de xG, xA, tiros y pases clave cada 90 por posición, con
+  ≥ 600 minutos, en un mart `mart_current_player_percentiles` (Argentina con SofaScore y las 5 grandes con
+  Understat, **cada fuente por separado**).
+- Para StatsBomb: vista con `round(percent_rank() over (partition by competition_id, season_id, position_group order by
   metric_per_90) * 100)` para 8-10 métricas clave (npxG, xA, xT, pases y conducciones progresivas, PAdj
   defensivas, presiones), solo jugadores con ≥ 600 minutos.
 - Alimenta los radares de Power BI y de la app.
@@ -91,8 +119,11 @@ tocar sin instalar nada**.
 3. **App pública** (Evidence.dev o Streamlit Community Cloud) sobre esos Parquet con DuckDB: radar de
    comparación de jugadores, buscador de subvaluados, ROI de fichajes y mapa de tiros. Link arriba de todo
    en el README.
-   - Ojo con el filtro "Sub-23 de la Liga Argentina": StatsBomb Open Data no tiene liga argentina, así que
-     ahí solo hay datos de Transfermarkt (sin xG).
+   - Liga Argentina actual: ya hay xG/xA de SofaScore en `mart_current_player_season` (`league_code =
+     'ARG'`). Para filtrar "Sub-23" falta la edad: SofaScore no la guarda hoy; o se agrega `dateOfBirth`
+     al scraper (si viene en el payload del jugador; verificar) o se cruza con Transfermarkt.
+   - StatsBomb Open Data no tiene liga argentina: las métricas de eventos (xT, PAdj) no van a existir
+     para Argentina, solo xG/xA y las estadísticas de SofaScore.
    - Revisar licencias antes de publicar: StatsBomb pide atribución; Transfermarkt es CC0.
 4. **SkillCorner Open Data** (`skillcorner/opendata`, ~10 partidos de tracking a 10 fps) como módulo aparte,
    en DuckDB/Parquet por volumen: sprints (> 25 km/h), HSR y aceleraciones por jugador y partido.
@@ -104,7 +135,7 @@ tocar sin instalar nada**.
   StatsBomb vs. `game_date` de `stg_appearances`) + `edit_distance <= 2`, y **único** en ese año (si hay dos
   candidatos, se descarta como en las demás reglas). Medir cuánto sube el cruce; no prometer un porcentaje.
 - **Club Elo** (clubelo.com, CSV público) como tabla liviana en el DAG para ponderar `mart_transfer_roi` y el
-  modelo de BigQuery ML **solo para fichajes entre clubes europeos** (ΔElo).
+  modelo de valor **solo para fichajes entre clubes europeos** (ΔElo).
 - **Modelos incrementales en dbt:** `stg_sb_events` hoy es `table` clusterizada por `match_id, event_type`.
   Pasarla a `incremental` con `insert_overwrite` recién cuando se cargue el alcance `all`; con `core` la
   ganancia es chica.
@@ -141,19 +172,30 @@ diferencia en vez de suponerla.
 
 ### 7.2 Understat vs. SofaScore
 
-- Ingerir las 5 grandes con `python -m ingestion.sofascore --scope big5 --mode full` (cientos de requests,
-  respetando `SOFASCORE_DAILY_BUDGET`) y aplicar las mismas métricas de 7.1 contra Understat, mismos
-  jugadores y misma temporada.
+- Ingerir las 5 grandes con `python -m ingestion.sofascore --scope big5 --mode full` y aplicar las mismas
+  métricas de 7.1 contra Understat, mismos jugadores y misma temporada (2026/27, ya cargada de Understat).
+- **Tiene que ser `full`, no `top`:** en la carga de Argentina, el modo `top` trajo xG solo para 50 de 460
+  jugadores; el resto vino en `null` porque `top` solo lista a los que aparecen en el ranking de xG.
+- **Volumen:** Argentina en `full` fueron ~840 requests en ~50 minutos. Las 5 grandes son ~2.200 jugadores,
+  así que `SOFASCORE_DAILY_BUDGET=1000` corta la corrida. Partir por liga (`--scope EPL`, después
+  `La_liga`, etc.) en días distintos; el manifest saltea lo ya bajado.
+- Cruce de jugadores Understat ↔ SofaScore: nombre normalizado + equipo + temporada, descartando ambiguos
+  (las dos son de clubes y de la misma liga).
 - Sirve para decidir con números si el respaldo manual (`xg_source_big5: sofascore`) es intercambiable con
   Understat o si cambia las conclusiones.
 
 ## 8. Criterios de aceptación
 
-- [ ] `ops.pipeline_runs` tiene filas después de `make understat` y de cada corrida del DAG con datos nuevos.
-- [ ] La tabla de métricas del README no tiene ningún *pendiente* y todos sus números salen de GCP.
-- [ ] `xt_added_per_90`, `position_group`, métricas PAdj y percentiles en los marts, con tests de dbt.
-- [ ] Smoke y CI en verde después de cada etapa.
+- [x] `ops.pipeline_runs` tiene filas después de `make understat`, `make sofascore` y de cada corrida del DAG con datos nuevos.
+- [ ] La tabla de métricas del README no tiene ningún *pendiente* y todos sus números salen de GCP (falta el costo mensual).
+- [x] `xt_added_per_90`, `position_group`, métricas PAdj y percentiles en los marts, con tests de dbt.
+- [x] Smoke en verde después de cada etapa (CI corre al pushear).
 - [ ] Capturas de Power BI y del linaje en el README, tomadas después de la etapa 2.
 - [ ] App pública con datos reales y link en el README.
-- [ ] Comparación Understat vs. StatsBomb (2015/16) con correlación, diferencia media y cobertura por liga,
-      resumida en el README.
+- [x] SofaScore Argentina cargado y en `mart_current_player_season` (22/10/2026).
+- [x] xG = 0 para jugadores de SofaScore sin tiros; test de aviso para los que tienen tiros y no xG.
+- [x] Percentiles por posición de la temporada actual (Argentina y 5 grandes, por fuente).
+- [x] Comparación Understat vs. StatsBomb (2015/16) con correlación, diferencia media y cobertura por liga,
+      resumida en el README (`scripts/compare_xg.py`, en local; la Bundesliga queda afuera porque StatsBomb trae
+      solo 34 partidos).
+- [ ] Comparación Understat vs. SofaScore (2026/27, 5 grandes) con las mismas métricas.
