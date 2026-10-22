@@ -1,0 +1,39 @@
+[
+  {
+    "name": "league_code",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Código interno: ARG para la Liga Profesional o el código de las 5 grandes (EPL, La_liga, ...)."
+  },
+  {
+    "name": "league_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season_id",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "ID interno de temporada de SofaScore (puede haber Apertura y Clausura)."
+  },
+  {
+    "name": "season_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "year",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "is_selected",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

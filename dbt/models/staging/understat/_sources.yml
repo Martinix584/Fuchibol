@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: understat
+    description: >
+      Understat (https://understat.com): xG, xA, npxG, xGChain y xGBuildup de la
+      temporada actual de las 5 grandes ligas. Se carga con ingestion/understat.py;
+      las tablas son append-only y el staging se queda con la última ingesta.
+      Understat no es una API oficial: si el endpoint cambia, la ingesta falla ruidosamente.
+    schema: "{{ env_var('BQ_UNDERSTAT_DATASET', 'raw_understat') }}"
+    config:
+      loaded_at_field: _ingested_at
+    tables:
+      - name: players_season
+      - name: team_matches
+      - name: matches

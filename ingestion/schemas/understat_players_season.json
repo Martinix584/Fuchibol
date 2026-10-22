@@ -1,0 +1,120 @@
+[
+  {
+    "name": "league",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Código de liga de Understat: EPL, La_liga, Serie_A, Bundesliga o Ligue_1."
+  },
+  {
+    "name": "league_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Año de inicio de la temporada europea (2026 = 2026/27)."
+  },
+  {
+    "name": "season_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "player_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "ID de jugador de Understat (se castea a INT64 en staging)."
+  },
+  {
+    "name": "player_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "position",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "games",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "minutes",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "goals",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "assists",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "shots",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "key_passes",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "yellow_cards",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "red_cards",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "non_penalty_goals",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xg",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xa",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "npxg",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xg_chain",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xg_buildup",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

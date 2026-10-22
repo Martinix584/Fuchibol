@@ -3,13 +3,17 @@
 [![CI](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml/badge.svg)](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml)
 
 Pipeline de datos de fútbol de punta a punta: **Python → GCS → BigQuery → dbt → BigQuery ML → Airflow → Power BI**,
-con dos fuentes públicas:
+con cuatro fuentes:
 
 - **Transfermarkt** ([transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), CC0): más de 50.000
   jugadores, 1,9 millones de apariciones, 650.000 valuaciones y 175.000 transferencias.
 - **StatsBomb Open Data** ([open-data](https://github.com/statsbomb/open-data)): **datos de eventos del mismo tipo que
   Opta**, es decir cada pase, tiro, conducción y presión con coordenadas y xG. Mundiales, Euros, Copa América, las 5
   grandes ligas 2015/16 (cuatro completas), la Bundesliga invicta del Leverkusen y todo Messi en La Liga.
+- **Understat** ([understat.com](https://understat.com)): xG, xA, npxG, xGChain y xGBuildup de la **temporada actual**
+  de las 5 grandes ligas. Corre a diario en Airflow.
+- **SofaScore** ([sofascore.com](https://www.sofascore.com)): xG/xA de la **Liga Profesional Argentina** y respaldo
+  manual de las 5 grandes. Es opcional y se corre **localmente** con Playwright: no va en Airflow.
 
 > **¿Y Opta?** Opta (Stats Perform) es un producto pago y su licencia no permite publicarlo en un repo. StatsBomb Open
 > Data es el equivalente gratuito y abierto que usa la comunidad de análisis: mismo tipo de datos y mismo nivel de
@@ -24,7 +28,9 @@ con dos fuentes públicas:
 | **¿Quién está subvaluado?** BigQuery ML estima cuánto "debería" valer cada jugador por su rendimiento | Transfermarkt | `mart_undervalued_players` |
 | **¿Quién genera más de lo que muestra?** xG, xA, pases y conducciones progresivas, presiones, todo cada 90 | StatsBomb | `mart_sb_player_seasons`, `fct_sb_shots` |
 | **¿Quién tuvo suerte?** Tabla real contra tabla por puntos esperados (xPts) | StatsBomb | `mart_sb_team_seasons` |
-| **¿Cuánto cuesta un xG?** Rendimiento de eventos + valor de mercado del mismo jugador | las dos, cruzadas | `mart_player_scouting` |
+| **¿Quién rinde hoy en las 5 grandes?** xG, xA y npxG de la temporada en curso, con la fuente marcada | Understat | `mart_current_player_season`, `mart_current_team_table` |
+| **¿Y la Liga Argentina?** xG/xA de la temporada en curso, sin mezclar modelos de xG | SofaScore | `mart_current_player_season` (`xg_source = 'sofascore'`) |
+| **¿Cuánto cuesta un xG?** Rendimiento de eventos + valor de mercado del mismo jugador | las históricas, cruzadas | `mart_player_scouting` |
 
 Y la ficha de cada jugador: partidos, goles, asistencias, goles por partido y cada 90, por temporada y en la carrera.
 
@@ -41,9 +47,11 @@ Y la ficha de cada jugador: partidos, goles, asistencias, goles por partido y ca
 flowchart LR
     TM[Transfermarkt<br/>CSV] -->|Python: solo archivos<br/>que cambiaron| GCS[(GCS<br/>raw/ por fecha)]
     SB[StatsBomb<br/>JSON de eventos] -->|Python: solo partidos<br/>nuevos o actualizados| GCS
-    GCS -->|load jobs| RAW[(BigQuery<br/>raw_transfermarkt<br/>raw_statsbomb)]
+    US[Understat<br/>JSON de liga] -->|Python: 5 requests/día| GCS
+    SS[SofaScore<br/>navegador local] -->|Python: manual, Argentina| GCS
+    GCS -->|load jobs| RAW[(BigQuery<br/>raw_transfermarkt<br/>raw_statsbomb<br/>raw_understat<br/>raw_sofascore)]
     RAW --> STG[dbt staging]
-    STG --> INT[dbt intermediate<br/>minutos, tiros, pases,<br/>fichajes, cruce de jugadores]
+    STG --> INT[dbt intermediate<br/>minutos, tiros, pases,<br/>fichajes, xG actual]
     STG --> SNAP[snapshot<br/>historial de valores]
     INT --> MARTS[dbt marts]
     INT --> ML[BigQuery ML]
@@ -52,7 +60,7 @@ flowchart LR
     OPS[(ops: métricas<br/>del pipeline)] --> PBI
 ```
 
-**DAG de Airflow** (lunes 06:00 UTC):
+**DAG semanal** (lunes 06:00 UTC, Transfermarkt + StatsBomb + histórico):
 
 ```mermaid
 flowchart LR
@@ -63,14 +71,24 @@ flowchart LR
     tm_finish & sb_finish --> dbt_build_core --> train_market_value_model --> dbt_build_ml
 ```
 
-- Las dos fuentes corren en paralelo, con tareas mapeadas (una por tabla o por competición-temporada).
-- Si ninguna cambió, `any_changes` corta el DAG y no se gasta nada en BigQuery. Si cambió una sola, la otra
+**DAG diario de la temporada actual** (`fuchibol_current_season`, 07:00 UTC):
+
+```mermaid
+flowchart LR
+    ensure[current_ensure_tables] --> us[understat_fetch] --> dbt[dbt_build_current<br/>--select tag:current+]
+```
+
+- Understat es la fuente automática de xG de las 5 grandes. SofaScore **no** corre en Airflow: se ejecuta localmente y
+  sus tablas existen vacías hasta que lo hagas. El DAG diario siempre puede construir los marts.
+- Las dos ramas históricas corren en paralelo, con tareas mapeadas (una por tabla o por competición-temporada).
+- Si ninguna cambió, `any_changes` corta el DAG semanal y no se gasta nada en BigQuery. Si cambió una sola, la otra
   rama queda en *skipped* y dbt corre igual (`trigger_rule="none_failed"`).
 - Los manifests (qué ya se procesó) se guardan recién cuando la carga terminó: un reintento nunca saltea datos.
+- El DAG semanal excluye `tag:current`; los marts de la temporada actual los construye el DAG diario.
 
 ## Modelo de datos (dbt)
 
-37 modelos en 4 capas, 2 seeds, 1 snapshot, 118 data tests, 4 unit tests y 1 exposure (el reporte).
+47 modelos en 4 capas, 2 seeds, 1 snapshot, 156 data tests, 4 unit tests y 1 exposure (el reporte).
 
 ```mermaid
 flowchart LR
@@ -90,6 +108,12 @@ flowchart LR
     end
     stg_sb_lineups & stg_players --> int_player_id_map
     mart_sb_player_seasons & int_player_id_map & stg_players --> mart_player_scouting
+    subgraph Temporada actual
+        stg_us_players_season --> int_us_player_season
+        stg_us_team_matches --> int_us_team_season --> mart_current_team_table
+        stg_ss_player_season --> int_ss_player_season
+        int_us_player_season & int_ss_player_season --> mart_current_player_season
+    end
 ```
 
 Lo que tiene de interesante cada parte:
@@ -108,20 +132,23 @@ Lo que tiene de interesante cada parte:
 - **Veredicto de cada fichaje** (`mart_transfer_roi`): reglas simples y explícitas, cubiertas por un unit test.
 - **Modelo de BigQuery ML**: un *boosted tree* que aprende el valor de mercado de temporadas pasadas y predice la
   última, que no vio al entrenar. Las variables están definidas una sola vez en `macros/ml.sql`.
+- **xG de la temporada actual sin mezclar fuentes** (`mart_current_player_season`): las 5 grandes salen de Understat
+  y Argentina de SofaScore. Cada fila lleva `xg_source`; no hay fallback automático entre fuentes porque los modelos
+  de xG no son comparables. El respaldo manual se activa con `--vars '{xg_source_big5: sofascore}'`.
 
 ## Validación con datos reales
 
 Sin cuenta de GCP no se puede correr BigQuery, así que el repo trae un **smoke test**: compila dbt, traduce el SQL
 de BigQuery a DuckDB (con [sqlglot](https://github.com/tobymao/sqlglot)) y corre todos los modelos y data tests
-sobre **partidos reales de StatsBomb** y un Transfermarkt sintético. En CI corre con los últimos 8 partidos del
-Mundial 2022; localmente, con el torneo completo (`make smoke`):
+sobre **partidos reales de StatsBomb**, un Transfermarkt sintético y datos sintéticos de Understat/SofaScore.
+En CI corre con los últimos 8 partidos del Mundial 2022; localmente, con el torneo completo (`make smoke`):
 
 | Métrica (Mundial 2022 completo, DuckDB local) | Valor |
 |---|---|
 | Partidos / eventos cargados | 64 / 234.637 |
 | Pases / tiros / jugador-partido | 68.515 / 1.453 / 1.995 |
-| Data tests que pasan | **114 de 114** (los 4 restantes dependen de BigQuery ML o del snapshot) |
-| Duración total (carga + 33 modelos + tests) | 38 s |
+| Data tests que pasan | **152 de 152** (los 4 restantes dependen de BigQuery ML o del snapshot) |
+| Duración total (carga + 43 modelos + tests) | ~50 s |
 
 Los resultados coinciden con lo que pasó en la cancha:
 
@@ -137,7 +164,7 @@ en el nombre del dataset de origen, una columna ambigua en un join, una macro `p
 (`npxg + xa * 90`) y minutos duplicados por tramos superpuestos en el origen.
 
 Además se corrió con partidos de otras épocas y competiciones (Mundial 1970, La Liga 2004/05, Premier 2015/16,
-Bundesliga 2023/24, Copa Africana 2023, Champions 2018/19): pasan los 114 tests. Eso destapó dos casos más que
+Bundesliga 2023/24, Copa Africana 2023, Champions 2018/19): pasan los 152 tests. Eso destapó dos casos más que
 ya están resueltos: tramos repetidos de forma idéntica, que con empates podían contar minutos dos veces (ahora lo
 cubre un unit test), y coordenadas apenas afuera de la cancha. Aparte, se validaron los tipos del esquema de
 BigQuery contra 606.713 eventos reales de las 67 competiciones-temporada masculinas.
@@ -162,11 +189,11 @@ de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá:
 | Qué | Dónde | Cuándo |
 |---|---|---|
 | Lint y formato (ruff) | `ingestion/`, `dags/`, `tests/`, `scripts/` | CI |
-| 22 tests unitarios de Python (plan incremental, manifests, esquemas, métricas) | `tests/` | CI |
+| 47 tests unitarios de Python (plan incremental, manifests, esquemas, métricas, Understat y SofaScore) | `tests/` | CI |
 | `dbt parse` (SQL, refs, YAML) | `dbt/` | CI |
 | Smoke test de punta a punta con partidos reales | `tests/smoke/` | CI |
 | `dag.test()` del DAG en 4 escenarios (las dos fuentes, una, la otra, ninguna) | `tests/dags/` | CI |
-| 118 data tests de dbt (genéricos, propios y de negocio) | `dbt/` | cada `dbt build` |
+| 156 data tests de dbt (genéricos, propios y de negocio) | `dbt/` | cada `dbt build` |
 | 4 unit tests de dbt (minutos, xPts, veredicto de fichajes) | `dbt/models/**/_*.yml` | cada `dbt build` |
 
 ## Decisiones de diseño
@@ -193,6 +220,14 @@ de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá:
 - **Transfermarkt:** los valores de mercado son **estimaciones** de su comunidad, no precios. `transfer_fee = 0`
   mezcla pases libres y préstamos; `null` es desconocido. Según el proyecto, **los datos llegan hasta el 6 de julio
   de 2026** y las actualizaciones están pausadas: el DAG lo detecta y no reprocesa nada hasta que vuelvan.
+- **Understat:** no es una API oficial; el pipeline usa el mismo JSON que pide su web. No cubre Argentina y sus
+  números pueden cambiar cuando corrige partidos. Es la fuente automática de xG de las 5 grandes.
+- **SofaScore:** no tiene API pública y sus **términos prohíben el scraping/agregación sin consentimiento**. Por eso
+  la ingesta es opcional, local, manual y de bajo volumen: no se ejecuta en Airflow ni se publica el raw. Si no se
+  corre, no hay filas de Argentina en `mart_current_player_season`. Más detalles en
+  [`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
+- **No se mezclan fuentes de xG.** Understat y SofaScore usan modelos distintos; cada fila de
+  `mart_current_player_season` lleva `xg_source`. El respaldo de las 5 grandes es manual, nunca automático.
 - Las métricas cada 90 de jugadores con pocos minutos no son confiables: filtrá por minutos.
 - Simplificación: las temporadas de Transfermarkt se cierran el 30 de junio; en ligas de calendario anual (como la
   argentina) eso corre la ventana medio año.
@@ -225,12 +260,32 @@ mkdir -p keys && gcloud iam service-accounts keys create keys/sa.json --iam-acco
 cp .env.example .env && set -a && source .env && set +a     # completá proyecto y bucket
 gcloud auth application-default login
 
-make extract        # primera carga de las dos fuentes (STATSBOMB_SCOPE=core: 348 partidos)
-make dbt-build      # seeds, modelos, snapshot, data tests y unit tests
+make extract        # primera carga de las fuentes (Transfermarkt + StatsBomb + Understat)
+make dbt-build      # seeds, modelos históricos, snapshot, data tests y unit tests
 make dbt-train      # BigQuery ML
+make dbt-current    # marts de la temporada actual (Understat + Argentina si hay SofaScore)
 make dbt-docs       # documentación y linaje en http://localhost:8081
 make airflow-up     # Airflow en http://localhost:8080 (en Linux, antes: AIRFLOW_UID=$(id -u) en .env)
 ```
+
+La temporada actual de las 5 grandes se actualiza sola con el DAG `fuchibol_current_season` (diario, 07:00 UTC).
+Para Argentina, el flujo es local:
+
+```bash
+make setup-sofascore                       # Playwright + Chromium (una sola vez)
+make sofascore                             # navegador visible; --scope ARG --mode full
+make dbt-current                           # reconstruye los marts de la temporada actual
+```
+
+Si algún día Understat falla y querés usar el respaldo de SofaScore para las 5 grandes:
+
+```bash
+python -m ingestion.sofascore --scope big5 --mode top --force
+cd dbt && dbt build --profiles-dir . --vars '{xg_source_big5: sofascore}' --select tag:current+
+```
+
+El respaldo es **manual a propósito**: no hay cambio automático de fuente. Ver
+[`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
 
 > El **sandbox** de BigQuery (sin tarjeta) no alcanza: no permite `MERGE`, que usan los snapshots. Con la
 > facturación activa, el alcance `core` entra en el nivel gratuito (10 GB de almacenamiento y 1 TB de consultas por
@@ -242,23 +297,27 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 ## Estructura
 
 ```
-├── dags/fuchibol_pipeline.py        # DAG de Airflow 3 (dos ramas + dbt + ML)
+├── dags/fuchibol_pipeline.py        # DAG semanal: Transfermarkt + StatsBomb + dbt + ML
+├── dags/fuchibol_current_season.py  # DAG diario: Understat + marts de temporada actual
 ├── ingestion/
 │   ├── extract.py, load.py          # Transfermarkt
 │   ├── statsbomb.py                 # StatsBomb (plan incremental, eventos y alineaciones)
-│   ├── schemas/                     # esquemas de BigQuery para el JSON de StatsBomb
+│   ├── understat.py                 # Understat (5 grandes, temporada actual)
+│   ├── sofascore.py                 # SofaScore local/manual (Argentina; Playwright)
+│   ├── bq.py, current_season.py     # helpers de carga y creación de tablas raw
+│   ├── schemas/                     # esquemas de BigQuery de las cuatro fuentes
 │   ├── metrics.py, storage.py, config.py
 ├── dbt/
-│   ├── models/{staging,intermediate,marts,ml}/{transfermarkt,statsbomb}
+│   ├── models/{staging,intermediate,marts,ml}/{transfermarkt,statsbomb,understat,sofascore,current}
 │   ├── seeds/                       # alias de países y cruces manuales de jugadores
 │   ├── snapshots/  macros/  tests/
 ├── tests/
 │   ├── test_*.py                    # pytest
-│   ├── smoke/                       # dbt en DuckDB con datos reales
+│   ├── smoke/                       # dbt en DuckDB con datos reales y sintéticos
 │   └── dags/                        # escenarios del DAG
 ├── powerbi/                         # guía del reporte y tema
+├── docs/                            # plan y runbook del respaldo manual de xG
 ├── scripts/                         # ingesta manual, smoke, test del DAG, métricas, gráficos
-├── docs/img/                        # gráficos del README
 ├── docker/ + docker-compose.yml     # Airflow local
 └── .github/workflows/ci.yml         # lint, pytest, dbt parse, smoke y DAG
 ```
@@ -266,6 +325,8 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 ## Próximos pasos
 
 - [ ] Primera corrida en GCP y completar la tabla de métricas.
+- [x] Validar Understat contra la temporada real (EPL/2026: 449 jugadores, 140 equipos-partido).
+- [ ] Correr `fuchibol_current_season` en Airflow contra GCP.
 - [ ] Armar el reporte de Power BI (guía en [`powerbi/`](powerbi/README.md)) y subir capturas y un GIF.
 - [ ] Publicar los docs de dbt en GitHub Pages.
 - [ ] Sumar los datos 360 de StatsBomb (posición de todos los jugadores en cada evento) para métricas de presión.
@@ -273,6 +334,7 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 ---
 
 <sub>Datos de eventos: [StatsBomb Open Data](https://github.com/statsbomb/open-data).
-Datos de mercado: [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), a partir de Transfermarkt.</sub>
+Datos de mercado: [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), a partir de Transfermarkt.
+xG de la temporada actual: [Understat](https://understat.com) y, para Argentina, [SofaScore](https://www.sofascore.com).</sub>
 
 <a href="https://github.com/statsbomb/open-data"><img src="https://raw.githubusercontent.com/statsbomb/open-data/master/img/SB%20-%20Icon%20Lockup%20-%20Colour%20positive.png" width="180" alt="StatsBomb"></a>

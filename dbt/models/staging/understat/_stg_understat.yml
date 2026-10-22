@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: stg_us_players_season
+    description: >
+      Una fila por jugador y liga-temporada con xG, xA, npxG, xGChain y xGBuildup.
+      Understat solo cubre las 5 grandes ligas.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season, player_id]
+    columns:
+      - name: player_id
+        data_tests: [not_null]
+      - name: league_code
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [EPL, La_liga, Serie_A, Bundesliga, Ligue_1]
+      - name: minutes
+        data_tests: [non_negative]
+      - name: xg
+        data_tests: [non_negative]
+      - name: xa
+        data_tests: [non_negative]
+      - name: npxg
+        data_tests: [non_negative]
+
+  - name: stg_us_team_matches
+    description: Un equipo por partido con xG a favor/en contra y xPts (Understat).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season, team_id, match_date]
+    columns:
+      - name: team_id
+        data_tests: [not_null]
+      - name: xg
+        data_tests: [non_negative]
+      - name: xga
+        data_tests: [non_negative]
+      - name: xpts
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 3
+
+  - name: stg_us_matches
+    description: Un partido por fila con goles y xG de cada lado (Understat).
+    columns:
+      - name: match_id
+        data_tests: [unique, not_null]

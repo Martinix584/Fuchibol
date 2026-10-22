@@ -1,39 +1,54 @@
-# Plan: datos de la temporada actual (API-Football + Understat)
+# Plan: datos de la temporada actual (Understat + SofaScore; API-Football pendiente)
 
 > Plan de trabajo para un agente que retome el proyecto. Está escrito para leerse de punta a punta
-> antes de tocar código. Todo lo marcado **VERIFICAR** se dio por cierto sin poder comprobarlo
-> (la red del entorno donde se escribió bloqueaba esas APIs): comprobalo contra la API real antes
-> de construir encima.
+> antes de tocar código. Las secciones de **API-Football** siguen marcadas **VERIFICAR** porque
+> requieren una API key y no se validaron contra el servicio real; la parte de **Understat y
+> SofaScore ya está verificada e implementada**.
+>
+> **Estado (octubre 2026):** la parte de xG ya está implementada. Understat usa el endpoint JSON
+> `GET /getLeagueData/{league}/{season}` (no el HTML embebido que suponía el plan original) y corre
+> en el DAG diario `fuchibol_current_season`. Para Argentina se eligió **SofaScore**, opcional y
+> local/manual, no API-Football. API-Football sigue pendiente: necesita una API key y no es
+> necesario para xG. Ver `docs/runbooks/xg-manual-fallback.md` y `ingestion/understat.py`.
 
 ## 1. Contexto
 
 Fuchibol es un pipeline de punta a punta: **Python → GCS → BigQuery → dbt → BigQuery ML → Airflow → Power BI**.
-Hoy tiene dos fuentes, y ninguna trae la temporada en curso:
+Hoy tiene cuatro fuentes; las dos nuevas cubren la temporada en curso:
 
 | Fuente | Qué trae | Problema |
 |---|---|---|
 | Transfermarkt ([transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), CC0) | Jugadores, valores de mercado, transferencias, apariciones | Las actualizaciones están **pausadas desde el 6 de julio de 2026** |
 | StatsBomb Open Data | Eventos con xG, xA, progresivos y presiones | Casi todo es **histórico** (torneos y temporadas puntuales) |
+| Understat | xG, xA, npxG, xGChain, xGBuildup y xPts | Solo las 5 grandes ligas (**no** Argentina) |
+| SofaScore | xG/xA por jugador | Argentina y respaldo manual; sin API pública y con ToS restrictivos |
 
 El usuario quiere **datos actuales** de **las 5 grandes ligas + la Liga Profesional Argentina**. Se suman dos
 fuentes:
 
 | Fuente nueva | Para qué | Cobertura |
 |---|---|---|
-| **API-Football v3** | Estadísticas actuales por jugador (minutos, goles, asistencias, pases clave, duelos, gambetas, rating…) y por partido | Las 6 ligas |
 | **Understat** | xG, xA, npxG, xGChain, xGBuildup por jugador y xPts por equipo, temporada actual | Solo las 5 grandes ligas (**no** Argentina) |
+| **SofaScore** | xG/xA por jugador de la temporada actual | Argentina; respaldo manual de las 5 grandes |
+
+API-Football (estadísticas actuales no-xG) sigue en el plan como fase posterior; no es requisito para xG.
 
 ### Decisiones ya tomadas con el usuario (no rediscutir)
 
 - Ligas: Premier League, La Liga, Serie A, Bundesliga, Ligue 1 y Liga Profesional Argentina.
+- **Understat** es la fuente automática de xG de las 5 grandes; corre en Airflow a diario.
+- **SofaScore** es la fuente de Argentina y el respaldo manual de las 5 grandes. Es local, opcional y **no**
+  corre en Airflow: no tiene API pública y sus ToS prohíben el scraping/agregación sin consentimiento.
+- **No se mezclan fuentes de xG en una misma fila:** `mart_current_player_season` expone `xg_source` y el
+  respaldo se activa a mano con `--vars '{xg_source_big5: sofascore}'`. No hay fallback automático.
 - Plan **gratis** de API-Football mientras alcance: unas 100 requests por día y 10 por minuto. Si el plan
   gratis no deja pedir la temporada actual, se avisa al usuario: la alternativa es el plan Pro (unos USD 19 por
   mes, 7.500 requests por día). **No contratar nada sin su confirmación.**
 - **Bajar una vez y guardar para siempre:** lo histórico se baja una vez, y la temporada en curso se actualiza
   de forma incremental (solo los partidos nuevos). La "base serverless" es **BigQuery**, que ya usa el proyecto:
   no hay que sumar otra base.
-- Los datos crudos de API-Football y Understat **no se suben al repo** (licencias). En el reporte solo van
-  agregados y métricas derivadas.
+- Los datos crudos de API-Football, Understat y SofaScore **no se suben al repo** (licencias/ToS). En el reporte
+  solo van agregados y métricas derivadas.
 
 ### Fuentes descartadas (y por qué; no volver a proponerlas)
 
@@ -45,17 +60,21 @@ fuentes:
 
 ## 2. Prerrequisitos (del usuario; pedirlos si faltan)
 
+La parte de xG ya implementada **no necesita API key**: Understat es público y SofaScore se corre
+local con Playwright. Lo siguiente aplica a la fase pendiente de API-Football.
+
 1. **API key de API-Football** (cuenta gratis en <https://dashboard.api-football.com>), cargada como **secreto del
    entorno** con el nombre `API_FOOTBALL_KEY`. Nunca en el chat, en el repo ni en logs.
-2. **Red:** agregar `v3.football.api-sports.io` y `understat.com` en *Network access → Allowed domains* del
-   entorno. Pasos: <https://code.claude.com/docs/en/cloud-environments#network-access>
+2. **Red:** `understat.com` (ya verificado) y `www.sofascore.com` para la ingesta local. Para API-Football,
+   agregar `v3.football.api-sports.io` en *Network access → Allowed domains* del entorno. Pasos:
+   <https://code.claude.com/docs/en/cloud-environments#network-access>
 3. En producción (Airflow), la key va como variable de entorno del contenedor (`.env`, que está en
    `.gitignore`) o como Airflow Variable o Connection. Documentarlo en `.env.example` **sin el valor**.
 
 Si faltan la key o la red, **no inventes respuestas de la API.** Se puede avanzar con el código y con tests
 sobre fixtures armadas a mano según la documentación, pero dejá claro en el PR que falta la validación real.
 
-## 3. Paso 0: verificaciones antes de escribir código
+## 3. Paso 0: verificaciones (API-Football pendiente)
 
 Hacelas con `curl` y anotá los resultados en el PR. Cada llamada consume cuota: usá las justas.
 
@@ -82,12 +101,11 @@ curl -s -H "$H" "$B/players?league=39&season=2026&page=1"   # ¿el plan gratis d
 - [ ] **Formato de Argentina:** si Apertura y Clausura están dentro de la misma liga 128 (distintos `round`) o
   en ids separados.
 - [ ] **`coverage`** de cada liga y temporada: `fixtures.statistics_players` y `players` tienen que ser `true`.
-- [ ] **Understat:** cómo expone hoy los datos. Históricamente venían embebidos en el HTML de
-  `https://understat.com/league/<LIGA>/<AÑO>` como `var playersData = JSON.parse('...')` (con escapes `\xNN`),
-  igual que `teamsData` y `datesData`. Puede haber cambiado a endpoints JSON. Inspeccioná la página y elegí el
-  camino más estable. Nombres de liga: `EPL`, `La_liga`, `Bundesliga`, `Serie_A`, `Ligue_1`.
-- [ ] **Términos de Understat:** no se encontraron. Scraping liviano (pocas requests, con caché y espera entre
-  llamadas), sin redistribuir datos crudos. Si sus términos lo prohíben, avisá y dejá Understat afuera.
+- [x] **Understat:** verificado. El endpoint es `GET /getLeagueData/{league}/{season}` con
+  `X-Requested-With: XMLHttpRequest`; devuelve `{players, teams, dates}` y no hace falta parsear
+  HTML. Nombres de liga: `EPL`, `La_liga`, `Bundesliga`, `Serie_A`, `Ligue_1`.
+- [x] **Términos de Understat:** no se encontraron términos que prohíban el uso; se hacen 5 requests
+  por día, con caché y espera entre ligas, y no se redistribuyen datos crudos. Implementado.
 
 ## 4. Datos de referencia
 
@@ -116,15 +134,20 @@ curl -s -H "$H" "$B/players?league=39&season=2026&page=1"   # ¿el plan gratis d
   Ojo con las faltas de ortografía de la API (`appearences`, `commited`): respetalas en el esquema.
 - Muchos valores numéricos llegan como **string** o **null** (por ejemplo `rating: "7.2"` o `passes.accuracy`).
   En raw, guardalos como STRING y castealos en staging con `safe_cast` (macro `to_int` y similares).
-- **No trae xG ni xA por jugador.** Para eso están StatsBomb (histórico) y Understat (actual).
+- **No trae xG ni xA por jugador.** Para eso están StatsBomb (histórico), Understat (5 grandes) y SofaScore
+  (Argentina).
 
-### Understat (**VERIFICAR**)
+### Understat (**verificado e implementado**)
 
-- Jugadores por liga y temporada: `id, player_name, games, time, goals, xG, assists, xA, shots, key_passes,
-  yellow_cards, red_cards, position, team_title, npg, npxG, xGChain, xGBuildup`, todos como string.
-- Equipos (`teamsData`): `history[]` por partido con `xG, xGA, npxG, npxGA, deep, ppda, xpts, result, date,
+- Endpoint: `GET /getLeagueData/{league}/{season}` con `X-Requested-With: XMLHttpRequest`. Devuelve
+  `{players, teams, dates}`.
+- Jugadores: `id, player_name, games, time, goals, xG, assists, xA, shots, key_passes, yellow_cards,
+  red_cards, position, team_title, npg, npxG, xGChain, xGBuildup`, casi todos como string.
+- Equipos: `teams[id].history[]` por partido con `xG, xGA, npxG, npxGA, deep, ppda, xpts, result, date,
   scored, missed, pts`.
+- `dates[]`: partidos con `goals` y `xG` de local/visitante.
 - La temporada es el año de inicio (2026 → 2026/27).
+- Verificado en octubre de 2026: EPL/2026 devolvió 449 jugadores.
 
 ### Presupuesto de requests (plan gratis, 100 por día)
 
@@ -140,10 +163,11 @@ backfill por partido en segundo plano. Dejá **siempre un margen** (tope de unas
 ## 5. Arquitectura propuesta
 
 ```
-API-Football ──► ingestion/api_football.py ──► GCS raw/api_football/<endpoint>/... ──► BigQuery raw_api_football
-Understat    ──► ingestion/understat.py    ──► GCS raw/understat/...               ──► BigQuery raw_understat
-                                                                   │
-                                     dbt staging → intermediate → marts (temporada actual)
+Understat ──► ingestion/understat.py ──► GCS raw/understat/...   ──► BigQuery raw_understat
+SofaScore ──► ingestion/sofascore.py  ──► GCS raw/sofascore/...  ──► BigQuery raw_sofascore
+API-Football ──► ingestion/api_football.py ──► GCS raw/api_football/... ──► BigQuery raw_api_football
+                                                   │
+                             dbt staging → intermediate → marts (temporada actual)
 ```
 
 Seguí **los mismos patrones** que `ingestion/statsbomb.py`:
@@ -178,78 +202,73 @@ Seguí **los mismos patrones** que `ingestion/statsbomb.py`:
   `API_FOOTBALL_LEAGUES = {39: ..., 140: ..., 135: ..., 78: ..., 61: ..., 128: ...}`, `API_FOOTBALL_SEASON`
   (default: la `current` de `/leagues`), `API_FOOTBALL_DAILY_BUDGET=90`, `BQ_API_FOOTBALL_DATASET`.
 
-### 5.2 `ingestion/understat.py`
+### 5.2 `ingestion/understat.py` (**implementado**)
 
-- Una request por liga y temporada para jugadores y equipos (según lo que se encuentre en el paso 0), con 2 a 5
-  segundos entre requests y un User-Agent que identifique el proyecto.
-- Solo la temporada actual por defecto (y opcionalmente las anteriores, una sola vez).
-- Raw: `players_season` y `team_matches` (de `teamsData.history`).
-- Si el formato es el `JSON.parse('...')` embebido: extraerlo con regex y decodificar los `\xNN` con
-  `codecs.decode(s, "unicode_escape")`, con un test que cubra justamente esa decodificación. Si se evalúa
-  `soccerdata` como dependencia, fijá la versión y aislalo detrás de una función, porque se rompe cuando el
-  sitio cambia.
+- Endpoint real: `GET https://understat.com/getLeagueData/{league}/{season}` con `X-Requested-With:
+  XMLHttpRequest` y User-Agent propio. Devuelve `{players, teams, dates}`; **no** hace falta parsear HTML.
+- Una request por liga y temporada, con 2,5 segundos entre ligas y un manifest que evita repetir la misma
+  liga dentro de las 6 horas. La temporada es el año de inicio (2026 → 2026/27).
+- Raw: `players_season`, `team_matches` (flatten de `teams[].history`) y `matches`.
+- Si Understat cambia el endpoint o el formato, la ingesta falla de forma ruidosa; no hay fallback automático.
 
-### 5.3 Airflow
+### 5.3 SofaScore (`ingestion/sofascore.py`, **implementado**)
 
-- **DAG nuevo, diario:** `dags/fuchibol_current_season.py` (por ejemplo 07:00 UTC). Tareas: `af_plan` →
-  `af_fetch` (una sola tarea secuencial: la cuota es global y no conviene paralelizar) → `af_finish`
-  (métricas + manifest) ‖ `understat_fetch` → `understat_finish` → gate de cambios → `dbt build` de los modelos
-  de temporada actual (`--select tag:current+`).
-- El DAG semanal existente (`fuchibol_pipeline`) **no cambia**, salvo que conviene excluir `tag:current` de su
-  `dbt_build_core` para no reconstruirlos dos veces (o dejarlos y documentarlo).
-- Mismas reglas que el DAG actual: `dbt_command()`, `env -u PYTHONPATH` para dbt, manifest al final y
-  `trigger_rule="none_failed"` donde una rama pueda quedar en *skipped*.
-- La key llega como variable de entorno del contenedor. Sumala a `docker-compose.yml` vía `env_file` (ya existe)
-  y a `.env.example` sin valor.
+- No tiene API pública y sus ToS prohíben el scraping/agregación sin consentimiento: es **local/manual**,
+  nunca en Airflow.
+- Playwright (import perezoso) abre la web, hace `fetch` same-origin y baja temporada, `top-players`,
+  equipos/plantillas y, en modo `full`, una request por jugador con minutos. Rate limit 3 s + jitter,
+  presupuesto de 1000 requests y manifest reanudable.
+- Argentina usa `full` por defecto; el respaldo de las 5 grandes usa `top` (sin minutos).
+- Raw: `seasons` y `player_season`. El staging prefiere `full` sobre `top`.
 
-### 5.4 dbt
+### 5.4 Airflow (**implementado**)
 
-Carpetas nuevas: `models/staging/api_football`, `models/staging/understat`, `models/intermediate/current`,
-`models/marts/current`. Ponele `+tags: ["current"]` a lo nuevo en `dbt_project.yml`.
+- DAG diario `dags/fuchibol_current_season.py` (07:00 UTC): `current_ensure_tables` → `understat_fetch` →
+  `dbt build --select tag:current+`.
+- `current_ensure_tables` crea también las tablas vacías de SofaScore para que dbt pueda referenciar ambos
+  sources antes de la primera corrida manual.
+- El DAG semanal `fuchibol_pipeline` ahora excluye `tag:current` (`--exclude tag:current`).
+- API-Football no se implementó: requiere API key y no es necesario para xG. Queda como fase posterior.
+
+### 5.4 dbt (**implementado para xG**)
+
+Carpetas nuevas: `models/staging/understat`, `models/staging/sofascore`,
+`models/intermediate/current`, `models/marts/current`. Los modelos llevan `tags=['current']`
+en su `config()` y el DAG semanal los excluye.
 
 | Modelo | Grano | Contenido |
 |---|---|---|
-| `stg_af_fixtures` | partido | ids, liga, temporada, ronda, fecha, equipos, goles, estado |
-| `stg_af_players` | jugador | perfil: nombre, nombre y apellido, **fecha de nacimiento**, nacionalidad, altura |
-| `stg_af_player_season_stats` | jugador × equipo × liga × temporada | totales (`unnest(statistics)`) |
-| `stg_af_fixture_player_stats` | jugador × partido | stats del partido (`unnest` de equipos y jugadores) |
 | `stg_us_players_season` | jugador Understat × liga × temporada | xG, xA, npxG, xGChain, xGBuildup… |
 | `stg_us_team_matches` | equipo × partido | xG, xGA, xpts, pts, ppda |
-| `int_af_player_season` | jugador × liga × temporada | suma de equipos + métricas cada 90 (macro `per_90`, ya tiene paréntesis) |
-| `int_player_id_map_af` | jugador AF → Transfermarkt | cruce (ver abajo) |
-| `int_player_id_map_us` | jugador Understat → AF | por nombre normalizado + equipo + liga y temporada |
-| `mart_current_player_season` | jugador × liga × temporada actual | stats AF + xG y xA de Understat (si hay) + valor de mercado TM |
-| `mart_current_team_table` | equipo × liga actual | puntos, xPts (Understat en las 5 grandes; en Argentina sin xPts), diferencia |
-| `mart_transfer_roi_current` | o extender `mart_transfer_roi` | rendimiento post-fichaje con AF para fichajes recientes |
+| `stg_us_matches` | partido | goles y xG de cada lado |
+| `stg_ss_seasons` | liga × temporada SofaScore | temporada elegida (Apertura/Clausura) |
+| `stg_ss_player_season` | jugador × temporada SofaScore | xG/xA, minutos (full) o totales (top) |
+| `int_us_player_season` | jugador × liga × temporada | métricas cada 90 y goles - xG |
+| `int_us_team_season` | equipo × liga × temporada | puntos reales vs. xPts |
+| `int_ss_player_season` | jugador × temporada SofaScore | métricas cada 90 (null en modo top) |
+| `mart_current_player_season` | jugador × liga × temporada actual | Understat o SofaScore, con `xg_source` |
+| `mart_current_team_table` | equipo × liga actual | puntos, xG, xPts (solo Understat) |
 
-**Cruce con Transfermarkt:** API-Football trae la **fecha de nacimiento**, así que el cruce es mucho más preciso
-que con StatsBomb.
+**Regla de fuentes:** las 5 grandes usan Understat por defecto; Argentina usa SofaScore. El var
+`xg_source_big5` (default `understat`) permite el respaldo manual `sofascore`. El test
+`assert_current_xg_source` verifica que no se mezclen fuentes. No hay fallback automático.
 
-1. Fecha de nacimiento igual + nombre normalizado igual (macro `normalize_name`).
-2. Fecha de nacimiento igual + misma nacionalidad + todas las palabras de un nombre dentro del otro.
-3. Nombre normalizado + nacionalidad (sin fecha), solo si es único.
-
-Reusá la lógica de `int_player_id_map.sql`: mejor regla primero, descartar empates y seed de overrides
-(podés crear `seeds/af_player_id_overrides.csv`). Agregá a `ops` o a un modelo la **tasa de cruce por liga**, que
-es una métrica del README.
-
-**Tests mínimos:** `unique` / `not_null` en claves; `unique_combination` en granos compuestos; `non_negative` en
-conteos; `in_range` en minutos por partido (0-150), en `rating` (0-10) y en `pass_accuracy` (0-100); relaciones
-entre jugador y partido; **unit tests** para la suma por equipos, para `per_90` y para el cruce por fecha de
-nacimiento. Seguí la sintaxis del repo (`data_tests` con `arguments:`, `config: severity: warn` donde aplique).
+**API-Football (pendiente):** cuando se implemente, sus modelos van en `models/staging/api_football`
+y se cruzan con Transfermarkt por fecha de nacimiento + nombre normalizado. No es necesario para
+xG y requiere API key.
 
 **Convenciones SQL del repo** (respetalas): BigQuery; `{{ to_int(...) }}` para enteros que pueden llegar como
 string o float; `where true` antes de un `qualify` que no tenga `WHERE` ni `GROUP BY`; nada de `select *` en marts
 salvo que esté justificado; comentarios en español dentro de `{# #}`; nombres en inglés y `snake_case`.
 
-### 5.5 Power BI y README
+### 5.5 Power BI y README (**implementado**)
 
-- `powerbi/README.md`: sumar la página **"Temporada actual"** (tabla de jugadores con slicer de liga y minutos
-  mínimos, xG/90 y xA/90 en las 5 grandes, rating y pases clave/90 en Argentina) y actualizar "¿Quién tuvo
-  suerte?" con `mart_current_team_table`.
-- `README.md`: fuentes (con atribución a API-Football y Understat), diagrama, métricas (requests usadas por día,
-  filas, tasa de cruce) y la aclaración de que Argentina no tiene xG.
-- Exposure de Power BI (`dbt/models/exposures.yml`): sumar los marts nuevos.
+- `powerbi/README.md`: página **"Temporada actual"** con `mart_current_player_season` (xG, xA, npxG,
+  goles - xG, `xg_source` como leyenda) y `mart_current_team_table` (puntos vs. xPts). Argentina usa
+  SofaScore y no tiene xPts de equipo en esta versión.
+- `README.md`: fuentes, diagrama, DAG diario, comandos de Understat/SofaScore, advertencia de ToS y
+  métricas de tests actualizadas.
+- Exposure de Power BI (`dbt/models/exposures.yml`): incluye los dos marts nuevos.
 
 ## 6. Tests y validación (antes de cada push)
 
@@ -261,36 +280,39 @@ scripts/smoke.sh --matches 8          # smoke actual: no debe romperse
 scripts/test_dag.sh                   # sumar los escenarios del DAG nuevo
 ```
 
-- **pytest** para todo lo puro: `plan_work` (presupuesto, prioridades, reanudar al otro día), parseo de
-  `errors`, encabezados de cuota, armado de filas, decodificación de Understat. Usá **fixtures chicas armadas a
-  mano** con la estructura real (pocas filas, nombres inventados). **No subas respuestas reales completas.**
-- **Smoke test:** extender `tests/smoke/` con un generador sintético para las tablas raw nuevas, siguiendo el
-  ejemplo de `synthetic_transfermarkt.py`, para que los modelos nuevos corran en DuckDB en CI.
-- **DAG:** escenarios con `dag.test()` en `tests/dags/` (sin cuota, con partidos nuevos, error de plan).
-- **Validación real** (con key y red): corré una ingesta con `API_FOOTBALL_DAILY_BUDGET=10`, revisá en el PR las
-  filas reales por tabla y contrastá 2 o 3 números conocidos (goleador de una liga, minutos de un titular).
+- **pytest** para todo lo puro: De Understat se testea `default_season`, `resolve_leagues`, el parser de
+  `players/teams/dates` y la frescura del manifest. De SofaScore, `resolve_scope`, `select_season`, el merge de
+  `top-players`, `player_stats_row`, `season_teams`/`roster_players`, el manifest y que el módulo importe sin
+  Playwright. Usá **fixtures chicas armadas a mano** con la estructura real. **No subas respuestas reales completas.**
+- **Smoke test:** `tests/smoke/synthetic_current_season.py` genera filas de Understat y SofaScore (incluida una
+  fila `top` vieja y una `full` nueva del mismo jugador) para que todos los modelos corran en DuckDB.
+- **DAG:** el test del DAG sigue cubriendo la rama histórica; el DAG nuevo es una cadena lineal y se valida con
+  `dbt parse`/smoke. Si se agregan escenarios, usar `dag.test()` en `tests/dags/`.
+- **Validación real:** Understat se verificó contra la temporada 2026/27 (por ejemplo, EPL devolvió 449
+  jugadores). SofaScore se verificó contra Argentina (`season_id=87913`); con red y key, API-Football se validará
+  con `API_FOOTBALL_DAILY_BUDGET=10` cuando se implemente.
 
-## 7. Orden de trabajo sugerido (un PR por paso)
+## 7. Orden de trabajo (estado)
 
-1. **Paso 0 + cliente API-Football**: verificaciones, `Client`, `Budget`, `plan_work`, esquemas, `/leagues`,
-   `/fixtures` y `/players` con sus tests.
-2. **`/fixtures/players`** + backfill incremental + DAG diario.
-3. **dbt de API-Football** + cruce con Transfermarkt + smoke y tests.
-4. **Understat** (ingesta + dbt + cruce con AF).
-5. **Marts de temporada actual**, README, Power BI y exposure.
+1. **Hecho:** Understat (endpoint JSON, ingesta, esquemas, dbt staging/intermediate/marts, DAG diario).
+2. **Hecho:** SofaScore local/manual para Argentina (Playwright, modo full, manifest, runbook).
+3. **Hecho:** marts de temporada actual con `xg_source`, respaldo manual `xg_source_big5`, smoke, tests,
+   README, Power BI y exposure.
+4. **Pendiente:** API-Football (`/leagues`, `/fixtures`, `/players`, `/fixtures/players`), cruce con
+   Transfermarkt por fecha de nacimiento y métricas no-xG. Requiere API key y validación real.
+5. **Opcional:** xPts de Argentina con un modelo Poisson propio; hoy `mart_current_team_table` es solo Understat.
 
 Cada PR: CI en verde, descripción con lo verificado y lo que falta, y sin datos crudos ni secretos.
 
 ## 8. Criterios de aceptación
 
-- [ ] Con el plan gratis, en ≤ 3 días hay **totales de la temporada actual** de las 6 ligas en BigQuery.
-- [ ] El backfill por partido avanza solo cada día **sin pasarse del presupuesto** y retoma donde quedó.
-- [ ] Una corrida sin cuota termina en verde y no pierde estado.
-- [ ] Reprocesar no duplica nada (staging con la última ingesta).
+- [x] xG y xA actuales de Understat para las 5 grandes, con `xg_source`.
+- [x] Argentina con xG/xA de SofaScore, sin mezclar fuentes; xPts de equipo queda pendiente.
+- [x] Reprocesar no duplica nada (staging con la última ingesta; `full` gana sobre `top`).
+- [x] CI en verde (lint, pytest, dbt parse, smoke) y README/Power BI actualizados.
+- [x] Ningún secreto ni dato crudo en el repo; riesgo de ToS de SofaScore documentado.
+- [ ] API-Football: totales y backfill por partido con el plan gratis, sin pasarse del presupuesto.
 - [ ] Tasa de cruce AF → Transfermarkt reportada por liga (objetivo orientativo: > 85 % en las 5 grandes).
-- [ ] xG y xA actuales de Understat para las 5 grandes; Argentina documentada sin xG.
-- [ ] CI en verde (lint, pytest, dbt parse, smoke y DAG) y README y Power BI actualizados.
-- [ ] Ningún secreto ni dato crudo en el repo.
 
 ## 9. Riesgos y qué hacer
 
