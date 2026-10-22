@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: ml
+    description: >
+      Salida del modelo de valor de mercado, que entrena ingestion/ml.py con scikit-learn
+      (`make dbt-train` o la tarea train_market_value_model del DAG).
+    schema: "{{ 'ml' if target.name == 'prod' else env_var('DBT_DEV_DATASET', 'dev') ~ '_ml' }}"
+    tables:
+      - name: model_predictions
+        description: Valor real y predicho de la última temporada (que el modelo no vio al entrenar).
+      - name: model_evaluation
+        description: R², MAE y error mediano (sobre el log del valor) en el 20 % de evaluación.
+      - name: feature_importance
+        description: Importancia de cada variable por permutación (caída del R² al mezclarla).

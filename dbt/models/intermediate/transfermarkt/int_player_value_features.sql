@@ -1,6 +1,6 @@
 {#
   Grano: jugador x temporada. Junta rendimiento + perfil + el valor de mercado
-  al cierre de la temporada (la etiqueta que aprende el modelo de BigQuery ML).
+  al cierre de la temporada (la etiqueta que aprende el modelo de valor, ingestion/ml.py).
 #}
 with stats as (
 

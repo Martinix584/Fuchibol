@@ -1,4 +1,4 @@
-"""DAG semanal de Fuchibol: dos fuentes en paralelo y después dbt + BigQuery ML.
+"""DAG semanal de Fuchibol: dos fuentes en paralelo y después dbt + el modelo de valor de mercado.
 
 Transfermarkt:  tm_check ─► tm_extract[tabla] ─► tm_load[tabla] ─► tm_finish
 StatsBomb:      sb_sync_matches ─► sb_ingest[competición-temporada] ─► sb_finish
@@ -9,6 +9,8 @@ StatsBomb:      sb_sync_matches ─► sb_ingest[competición-temporada] ─► 
   de cada partido en StatsBomb). Los manifests se guardan recién cuando la carga terminó.
 - Si ninguna fuente cambió, any_changes corta el DAG y no se gasta nada en BigQuery.
 - Con el parámetro force=True se reprocesa todo.
+- train_market_value_model entrena con scikit-learn (ingestion/ml.py). La idea era BigQuery ML,
+  pero para este proyecto no valía la pena: facturaba más de 20 GB por una tabla de 27 MB.
 """
 
 from __future__ import annotations
@@ -121,7 +123,7 @@ def fuchibol_pipeline():
     )
     train_model = BashOperator(
         task_id="train_market_value_model",
-        bash_command=f"cd {DBT_DIR} && {DBT_BIN} run-operation train_market_value_model --target prod",
+        bash_command="cd /opt/airflow && python -m ingestion.ml",
     )
     dbt_build_ml = BashOperator(
         task_id="dbt_build_ml",

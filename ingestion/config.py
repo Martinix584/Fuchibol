@@ -36,6 +36,9 @@ GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 BQ_LOCATION = os.getenv("BQ_LOCATION", "US")
 BQ_RAW_DATASET = os.getenv("BQ_RAW_DATASET", "raw_transfermarkt")
 BQ_OPS_DATASET = os.getenv("BQ_OPS_DATASET", "ops")
+# Modelo de valor de mercado (ingestion/ml.py): dónde escribe y minutos mínimos por temporada.
+BQ_ML_DATASET = os.getenv("BQ_ML_DATASET", "ml")
+ML_MIN_MINUTES = int(os.getenv("ML_MIN_MINUTES", "900"))
 
 GCS_RAW_PREFIX = "raw/transfermarkt"
 MANIFEST_BLOB = "manifests/transfermarkt.json"
@@ -120,7 +123,9 @@ SOFASCORE_MODE = os.getenv("SOFASCORE_MODE", "")
 SOFASCORE_SEASON = os.getenv("SOFASCORE_SEASON", "")
 SOFASCORE_RATE_LIMIT_S = float(os.getenv("SOFASCORE_RATE_LIMIT_S", "3"))
 SOFASCORE_DAILY_BUDGET = int(os.getenv("SOFASCORE_DAILY_BUDGET", "1000"))
-SOFASCORE_REFRESH_HOURS = float(os.getenv("SOFASCORE_REFRESH_HOURS", "6"))
+# Un jugador bajado hace menos de esto se saltea: 24 h deja retomar al otro día una corrida
+# cortada por presupuesto sin volver a pedir lo ya bajado.
+SOFASCORE_REFRESH_HOURS = float(os.getenv("SOFASCORE_REFRESH_HOURS", "24"))
 SOFASCORE_PROFILE_DIR = os.getenv(
     "SOFASCORE_PROFILE_DIR", os.path.expanduser("~/.cache/fuchibol/sofascore-profile")
 )

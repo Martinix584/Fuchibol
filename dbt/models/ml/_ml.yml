@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: ml_market_value_predictions
-    description: Valor real vs. valor predicho por el modelo de BigQuery ML (última temporada).
+    description: Valor real vs. valor predicho por el modelo (scikit-learn, ingestion/ml.py) para la última temporada.
     data_tests:
       - unique_combination:
           arguments:

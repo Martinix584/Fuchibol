@@ -40,7 +40,7 @@ Para la competición, armá una tabla `Competicion` con `competition_id`, `seaso
    por `hit_rate`; filtros de liga, temporada y posición.
 3. **Argentina, fábrica de jugadores**: Sankey club de origen → liga de destino; ingresos por club y año;
    `peak_value_to_fee_ratio`.
-4. **Subvaluados (BigQuery ML)**: top 20 por `predicted_to_actual_ratio`; real vs. predicho; importancia de
+4. **Subvaluados (modelo de ML)**: top 20 por `predicted_to_actual_ratio`; real vs. predicho; importancia de
    variables; R² y MAE del modelo.
 5. **Scouting con datos de eventos** (StatsBomb + Transfermarkt): dispersión npxG/90 vs. xA/90 con tamaño = valor de
    mercado; slicer de minutos mínimos (≥ 270 en torneos, ≥ 900 en ligas); tabla con pases y conducciones

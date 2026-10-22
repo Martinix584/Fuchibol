@@ -3,6 +3,11 @@
 PY ?= .venv/bin/python
 DBT = cd dbt && $(CURDIR)/.venv/bin/dbt
 DBT_FLAGS = --profiles-dir .
+DBT_TARGET ?= dev
+DBT_DEV_DATASET ?= dev
+# El modelo escribe y lee el mismo dataset que usa dbt: ml en prod, <dev>_ml en dev.
+ML_DATASET = $(if $(filter prod,$(DBT_TARGET)),ml,$(DBT_DEV_DATASET)_ml)
+ML_FEATURES_DATASET = $(if $(filter prod,$(DBT_TARGET)),intermediate,$(DBT_DEV_DATASET)_intermediate)
 SMOKE_DB ?= /tmp/fuchibol-smoke.duckdb
 
 setup:            ## Entorno local (Python 3.12+)
@@ -21,10 +26,10 @@ lint:
 	$(PY) -m ruff format --check ingestion dags tests scripts
 
 smoke:            ## dbt de punta a punta en DuckDB con el Mundial 2022 real (sin GCP)
-	scripts/smoke.sh --database $(SMOKE_DB)
+	PATH=$(CURDIR)/.venv/bin:$$PATH scripts/smoke.sh --database $(SMOKE_DB)
 
 test-dag:         ## dag.test() del DAG en 4 escenarios (requiere Airflow instalado)
-	scripts/test_dag.sh
+	PATH=$(CURDIR)/.venv/bin:$$PATH scripts/test_dag.sh
 
 charts: smoke     ## Regenera los gráficos del README con datos reales
 	PYTHONPATH=. $(PY) scripts/readme_charts.py $(SMOKE_DB)
@@ -44,9 +49,9 @@ understat:        ## Ingesta de Understat (temporada actual de las 5 grandes)
 sofascore:        ## Ingesta local/manual de SofaScore (Argentina; requiere setup-sofascore)
 	PYTHONPATH=. $(PY) -m ingestion.sofascore --scope ARG --mode full --headful
 
-dbt-train:        ## Entrena el modelo de BigQuery ML y construye sus tablas
-	$(DBT) run-operation train_market_value_model $(DBT_FLAGS)
-	$(DBT) build $(DBT_FLAGS) --select tag:ml
+dbt-train:        ## Entrena el modelo de valor de mercado (scikit-learn, en local) y construye sus tablas
+	BQ_ML_DATASET=$(ML_DATASET) PYTHONPATH=. $(PY) -m ingestion.ml --dataset $(ML_FEATURES_DATASET) && \
+	$(DBT) build $(DBT_FLAGS) --target $(DBT_TARGET) --select tag:ml
 
 dbt-docs:         ## Documentación y linaje de dbt en http://localhost:8081
 	$(DBT) docs generate $(DBT_FLAGS) && $(DBT) docs serve $(DBT_FLAGS) --port 8081

@@ -39,7 +39,7 @@ QUERIES = {
         group by match_method
         order by jugadores desc
     """,
-    "Modelo de valor de mercado (BigQuery ML)": """
+    "Modelo de valor de mercado (scikit-learn)": """
         select round(r2_score, 3) as r2, round(mean_absolute_error, 3) as mae_log,
                round(median_absolute_error, 3) as mediana_error_log
         from `{p}.ml.ml_model_evaluation`

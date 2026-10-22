@@ -4,7 +4,7 @@
    con la misma estructura que el repo open-data) con el mismo esquema que en BigQuery.
 2. Genera datos sintéticos de Transfermarkt (con jugadores reales de esos partidos) y de
    Understat/SofaScore (temporada actual) con los esquemas de BigQuery.
-3. Corre en orden todos los modelos dbt compilados (salvo los de BigQuery ML) traduciendo
+3. Corre en orden todos los modelos dbt compilados (salvo los del modelo de ML) traduciendo
    el SQL de BigQuery a DuckDB, y después todos los data tests.
 4. Imprime un resumen (filas, tiempos, tests) y sale con error si falla algo.
 
@@ -191,7 +191,7 @@ def main() -> int:
                 f"select * from read_csv('{path}', header=true, types={types})"
             )
 
-    # modelos (sin los de BigQuery ML, que necesitan el modelo entrenado)
+    # modelos (sin los de ML, que leen las predicciones de ingestion/ml.py)
     for uid in order:
         node = nodes[uid]
         if node["resource_type"] != "model" or "ml" in node["tags"]:

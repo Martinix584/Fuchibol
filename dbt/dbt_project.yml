@@ -12,8 +12,6 @@ target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
 vars:
-  # Minutos mínimos en la temporada para entrenar/predecir el valor de mercado
-  ml_min_minutes: 900
   # Ventana (días) para medir el rendimiento antes y después de un fichaje
   transfer_window_days: 365
   # Fuente de xG para las 5 grandes: understat (default) o sofascore (respaldo manual).

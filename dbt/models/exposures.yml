@@ -7,7 +7,7 @@ exposures:
     maturity: medium
     description: >
       Reporte de 8 páginas: ficha del jugador, ¿valió lo que se pagó?, Argentina fábrica de
-      jugadores, subvaluados (BigQuery ML), scouting con xG, tabla por xG, temporada actual y
+      jugadores, subvaluados (modelo de ML), scouting con xG, tabla por xG, temporada actual y
       salud del pipeline.
     owner:
       name: Fuchibol
