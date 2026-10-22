@@ -15,10 +15,6 @@ con cuatro fuentes:
 - **SofaScore** ([sofascore.com](https://www.sofascore.com)): xG/xA de la **Liga Profesional Argentina** y respaldo
   manual de las 5 grandes. Es opcional y se corre **localmente** con Playwright: no va en Airflow.
 
-> **¿Y Opta?** Opta (Stats Perform) es un producto pago y su licencia no permite publicarlo en un repo. StatsBomb Open
-> Data es el equivalente gratuito y abierto que usa la comunidad de análisis: mismo tipo de datos y mismo nivel de
-> detalle. FBref muestra datos de Opta, pero sus términos prohíben el scraping.
-
 ## Qué responde
 
 | Pregunta | Fuente | Modelo |
@@ -172,17 +168,20 @@ BigQuery contra 606.713 eventos reales de las 67 competiciones-temporada masculi
 ## Métricas del pipeline en BigQuery
 
 Cada corrida guarda filas, bytes y tiempos por tabla en `ops.pipeline_runs`, y el resultado de cada modelo y test
-de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá:
+de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá.
+
+Primera corrida real (22/10/2026), por ahora **solo la temporada actual**: Transfermarkt, StatsBomb y BigQuery ML
+todavía no se cargaron en GCP.
 
 | Métrica | Valor |
 |---|---|
-| Filas cargadas por fuente | _pendiente de la primera corrida en GCP_ |
-| Volumen en GCS y BigQuery | _pendiente_ |
-| Duración del DAG y de `dbt build` | _pendiente_ |
-| Tests que pasan | _pendiente_ |
-| Jugadores cruzados entre fuentes, por regla | _pendiente_ |
+| Filas cargadas por fuente | Understat 2026/27: 2.210 jugadores, 690 equipos-partido y 1.752 partidos (5 ligas). SofaScore: 0 (falta la carga manual) |
+| Volumen en GCS y BigQuery | 0,2 MB en GCS y 0,8 MB en las tablas raw |
+| Duración de `dbt build --select tag:current+` | ~40 s (49 nodos) |
+| Tests que pasan | 38/38 de la temporada actual |
+| Jugadores cruzados entre fuentes, por regla | _pendiente (requiere StatsBomb + Transfermarkt)_ |
 | Modelo ML: R² / MAE (log del valor) | _pendiente_ |
-| Costo mensual | _pendiente_ (diseñado para entrar en el nivel gratuito) |
+| Costo mensual | Dentro del nivel gratuito (MB, no GB) |
 
 ## Calidad
 
@@ -268,6 +267,12 @@ make dbt-docs       # documentación y linaje en http://localhost:8081
 make airflow-up     # Airflow en http://localhost:8080 (en Linux, antes: AIRFLOW_UID=$(id -u) en .env)
 ```
 
+> **¿La organización no deja crear claves?** Las organizaciones nuevas de Google Cloud traen activada la política
+> `iam.disableServiceAccountKeyCreation`, así que `keys create` falla. Para correrlo en local no hace falta la clave:
+> con `gcloud auth application-default login` alcanza para `make extract` y dbt, y para Airflow agregá al `.env`
+> `GCP_CREDENTIALS_FILE=$HOME/.config/gcloud/application_default_credentials.json` (el contenedor monta ese archivo
+> en lugar de `keys/sa.json`). Ojo: así Airflow corre con tu usuario. Para dejarlo fijo, usá una service account.
+
 La temporada actual de las 5 grandes se actualiza sola con el DAG `fuchibol_current_season` (diario, 07:00 UTC).
 Para Argentina, el flujo es local:
 
@@ -324,9 +329,10 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 
 ## Próximos pasos
 
-- [ ] Primera corrida en GCP y completar la tabla de métricas.
 - [x] Validar Understat contra la temporada real (EPL/2026: 449 jugadores, 140 equipos-partido).
-- [ ] Correr `fuchibol_current_season` en Airflow contra GCP.
+- [x] Correr `fuchibol_current_season` en Airflow contra GCP (las 3 tareas OK, target `prod`).
+- [ ] Primera carga de SofaScore Argentina (`make sofascore`).
+- [ ] Cargar Transfermarkt y StatsBomb en GCP, entrenar BigQuery ML y completar la tabla de métricas.
 - [ ] Armar el reporte de Power BI (guía en [`powerbi/`](powerbi/README.md)) y subir capturas y un GIF.
 - [ ] Publicar los docs de dbt en GitHub Pages.
 - [ ] Sumar los datos 360 de StatsBomb (posición de todos los jugadores en cada evento) para métricas de presión.
