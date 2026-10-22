@@ -112,6 +112,6 @@ models:
           - in_range:
               arguments:
                 min_value: 0
-                max_value: 130
+                max_value: 150  # alargue + descuentos: Transfermarkt trae partidos de 135' y 148'
       - name: goals
         data_tests: [non_negative]

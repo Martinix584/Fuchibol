@@ -23,4 +23,4 @@ PY
 
 cd "$ROOT/dbt"
 GOOGLE_APPLICATION_CREDENTIALS="$TMP/sa.json" GCP_PROJECT_ID="${GCP_PROJECT_ID:-fuchibol-offline}" DBT_SEND_ANONYMOUS_USAGE_STATS=false \
-  dbt --no-populate-cache "$@" --target prod --profiles-dir . --quiet
+  dbt --no-populate-cache --no-partial-parse "$@" --target prod --profiles-dir . --quiet
