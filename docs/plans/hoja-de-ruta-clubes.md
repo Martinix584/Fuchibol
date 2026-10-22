@@ -5,7 +5,7 @@
 >
 > **Estado (octubre 2026):** el pipeline histórico (Transfermarkt + StatsBomb) y la temporada actual
 > (Understat) andan. En GCP solo corrió la temporada actual; Transfermarkt, StatsBomb y BigQuery ML
-> todavía no se cargaron. SofaScore quedó bloqueado por su challenge antibots y no se intenta esquivar.
+> todavía no se cargaron. SofaScore (Argentina) se carga a mano con `make sofascore`.
 
 ## 1. Objetivo
 
@@ -35,8 +35,8 @@ tocar sin instalar nada**.
   ventas de la liga argentina.
 - **Capturas y Parquet al final.** Power BI, capturas y exportación se hacen recién cuando estén xT, PAdj y
   percentiles, para no hacerlos dos veces.
-- **SofaScore no se fuerza.** Para Argentina actual, la vía es API-Football (ver
-  `docs/plans/datos-actuales-api-football-understat.md`).
+- **SofaScore es la fuente de Argentina**, cargada a mano con `make sofascore` (navegador visible).
+  API-Football queda como fuente opcional para estadísticas no-xG.
 
 ## 3. Etapa 1: números reales (1-2 días)
 
@@ -139,13 +139,11 @@ diferencia en vez de suponerla.
   Equipo sí sirve acá, porque las dos fuentes son de clubes y de la misma liga.
 - Resultado al README, en "Sobre los datos": cuánto se separan los dos modelos de xG.
 
-### 7.2 Understat vs. SofaScore (solo si SofaScore vuelve a estar accesible)
+### 7.2 Understat vs. SofaScore
 
-- Hoy SofaScore responde con un challenge antibots y **no se intenta esquivarlo**. Esta comparación queda
-  condicionada a poder bajar los datos sin forzar nada.
-- Si se puede: ingerir una liga grande con `python -m ingestion.sofascore --scope big5 --mode full` (cientos
-  de requests, respetando `SOFASCORE_DAILY_BUDGET`) y aplicar las mismas métricas de 7.1 contra Understat,
-  mismos jugadores y misma temporada.
+- Ingerir las 5 grandes con `python -m ingestion.sofascore --scope big5 --mode full` (cientos de requests,
+  respetando `SOFASCORE_DAILY_BUDGET`) y aplicar las mismas métricas de 7.1 contra Understat, mismos
+  jugadores y misma temporada.
 - Sirve para decidir con números si el respaldo manual (`xg_source_big5: sofascore`) es intercambiable con
   Understat o si cambia las conclusiones.
 
