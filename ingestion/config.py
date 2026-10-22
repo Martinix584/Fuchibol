@@ -88,7 +88,7 @@ UNDERSTAT_MANIFEST_BLOB = "manifests/understat.json"
 # ---------------------------------------------------------------------------
 # SofaScore: xG/xA de la Liga Profesional Argentina y respaldo manual para las
 # 5 grandes. No tiene API pública; se usa Playwright de forma local (nunca en
-# Airflow). Sus términos prohíben el scraping: leer docs/runbooks/xg-manual-fallback.md.
+# Airflow). Ver docs/runbooks/xg-manual-fallback.md.
 # ---------------------------------------------------------------------------
 SOFASCORE_HOME_URL = os.getenv("SOFASCORE_HOME_URL", "https://www.sofascore.com")
 SOFASCORE_TOURNAMENTS = {

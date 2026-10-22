@@ -9,8 +9,8 @@
 | Respaldo de las 5 grandes | **SofaScore** | Local/manual, solo si Understat falla |
 
 Understat es la fuente principal de xG de las 5 grandes. SofaScore **no** corre en Airflow: no tiene API
-pública, sus términos prohíben el scraping/agregación sin consentimiento y su sesión puede pedir un
-captcha. La ingesta es opcional, de bajo volumen y queda fuera del repo (no se versiona el raw).
+pública y su sesión puede pedir un captcha. La ingesta es opcional, de bajo volumen y queda fuera del
+repo (no se versiona el raw).
 
 ## Preparación (una sola vez)
 
@@ -95,7 +95,6 @@ sea siempre SofaScore y que las 5 grandes usen la fuente elegida.
 - En modo `top`, `minutes` y las métricas cada 90 quedan null; los totales de xG/xA sí están.
 - SofaScore puede cambiar sus endpoints o su challenge sin aviso. Si la ingesta falla, el pipeline
   histórico y Understat siguen funcionando.
-- Los términos de SofaScore prohíben el scraping/agregación sin consentimiento. Este runbook es para uso
-  local, manual y de bajo volumen; no publiques el raw ni lo pongas en un servicio.
+- Este runbook es para uso local, manual y de bajo volumen; no publiques el raw ni lo pongas en un servicio.
 - Understat tampoco es una API oficial: si cambia el endpoint, `ingestion/understat.py` falla de forma
   ruidosa y el DAG diario queda en rojo (los marts conservan la última carga).

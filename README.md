@@ -222,8 +222,7 @@ corridas del DAG que el manifest saltea no escriben filas, así que `make metric
   de 2026** y las actualizaciones están pausadas: el DAG lo detecta y no reprocesa nada hasta que vuelvan.
 - **Understat:** no es una API oficial; el pipeline usa el mismo JSON que pide su web. No cubre Argentina y sus
   números pueden cambiar cuando corrige partidos. Es la fuente automática de xG de las 5 grandes.
-- **SofaScore:** no tiene API pública y sus **términos prohíben el scraping/agregación sin consentimiento**. Por eso
-  la ingesta es opcional, local, manual y de bajo volumen: no se ejecuta en Airflow ni se publica el raw. Si no se
+- **SofaScore:** no tiene API pública. La ingesta es opcional, local, manual y de bajo volumen: no se ejecuta en Airflow ni se publica el raw. Si no se
   corre, no hay filas de Argentina en `mart_current_player_season`. Más detalles en
   [`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
 - **No se mezclan fuentes de xG.** Understat y SofaScore usan modelos distintos; cada fila de

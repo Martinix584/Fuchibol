@@ -21,7 +21,7 @@ Hoy tiene cuatro fuentes; las dos nuevas cubren la temporada en curso:
 | Transfermarkt ([transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), CC0) | Jugadores, valores de mercado, transferencias, apariciones | Las actualizaciones están **pausadas desde el 6 de julio de 2026** |
 | StatsBomb Open Data | Eventos con xG, xA, progresivos y presiones | Casi todo es **histórico** (torneos y temporadas puntuales) |
 | Understat | xG, xA, npxG, xGChain, xGBuildup y xPts | Solo las 5 grandes ligas (**no** Argentina) |
-| SofaScore | xG/xA por jugador | Argentina y respaldo manual; sin API pública y con ToS restrictivos |
+| SofaScore | xG/xA por jugador | Argentina y respaldo manual; sin API pública |
 
 El usuario quiere **datos actuales** de **las 5 grandes ligas + la Liga Profesional Argentina**. Se suman dos
 fuentes:
@@ -38,7 +38,7 @@ API-Football (estadísticas actuales no-xG) sigue en el plan como fase posterior
 - Ligas: Premier League, La Liga, Serie A, Bundesliga, Ligue 1 y Liga Profesional Argentina.
 - **Understat** es la fuente automática de xG de las 5 grandes; corre en Airflow a diario.
 - **SofaScore** es la fuente de Argentina y el respaldo manual de las 5 grandes. Es local, opcional y **no**
-  corre en Airflow: no tiene API pública y sus ToS prohíben el scraping/agregación sin consentimiento.
+  corre en Airflow: no tiene API pública.
 - **No se mezclan fuentes de xG en una misma fila:** `mart_current_player_season` expone `xg_source` y el
   respaldo se activa a mano con `--vars '{xg_source_big5: sofascore}'`. No hay fallback automático.
 - Plan **gratis** de API-Football mientras alcance: unas 100 requests por día y 10 por minuto. Si el plan
@@ -213,7 +213,7 @@ Seguí **los mismos patrones** que `ingestion/statsbomb.py`:
 
 ### 5.3 SofaScore (`ingestion/sofascore.py`, **implementado**)
 
-- No tiene API pública y sus ToS prohíben el scraping/agregación sin consentimiento: es **local/manual**,
+- No tiene API pública: es **local/manual**,
   nunca en Airflow.
 - Playwright (import perezoso) abre la web, hace `fetch` same-origin y baja temporada, `top-players`,
   equipos/plantillas y, en modo `full`, una request por jugador con minutos. Rate limit 3 s + jitter,
@@ -266,7 +266,7 @@ salvo que esté justificado; comentarios en español dentro de `{# #}`; nombres 
 - `powerbi/README.md`: página **"Temporada actual"** con `mart_current_player_season` (xG, xA, npxG,
   goles - xG, `xg_source` como leyenda) y `mart_current_team_table` (puntos vs. xPts). Argentina usa
   SofaScore y no tiene xPts de equipo en esta versión.
-- `README.md`: fuentes, diagrama, DAG diario, comandos de Understat/SofaScore, advertencia de ToS y
+- `README.md`: fuentes, diagrama, DAG diario, comandos de Understat/SofaScore y
   métricas de tests actualizadas.
 - Exposure de Power BI (`dbt/models/exposures.yml`): incluye los dos marts nuevos.
 
@@ -310,7 +310,7 @@ Cada PR: CI en verde, descripción con lo verificado y lo que falta, y sin datos
 - [x] Argentina con xG/xA de SofaScore, sin mezclar fuentes; xPts de equipo queda pendiente.
 - [x] Reprocesar no duplica nada (staging con la última ingesta; `full` gana sobre `top`).
 - [x] CI en verde (lint, pytest, dbt parse, smoke) y README/Power BI actualizados.
-- [x] Ningún secreto ni dato crudo en el repo; riesgo de ToS de SofaScore documentado.
+- [x] Ningún secreto ni dato crudo en el repo.
 - [ ] API-Football: totales y backfill por partido con el plan gratis, sin pasarse del presupuesto.
 - [ ] Tasa de cruce AF → Transfermarkt reportada por liga (objetivo orientativo: > 85 % en las 5 grandes).
 

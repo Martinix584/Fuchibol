@@ -23,8 +23,7 @@ Requisitos (solo local):
     python -m ingestion.sofascore --scope ARG --mode full
     python -m ingestion.sofascore --scope big5 --mode top --force
 
-Términos: los Términos y Condiciones de SofaScore prohíben el scraping/agregación sin
-consentimiento. Este módulo es opcional, manual y de bajo volumen; no se publica el raw.
+Este módulo es opcional, manual y de bajo volumen; no se publica el raw.
 Ver docs/runbooks/xg-manual-fallback.md.
 """
 

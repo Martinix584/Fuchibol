@@ -1,9 +1,9 @@
 """DAG diario de la temporada actual: Understat -> dbt current.
 
 Understat es la fuente automática de xG/xA de las 5 grandes ligas. SofaScore queda
-afuera a propósito: no tiene API pública, sus términos prohíben el scraping y se corre
-local/manual (ver docs/runbooks/xg-manual-fallback.md). La rama de Argentina se
-construye con las tablas vacías si SofaScore todavía no se corrió.
+afuera a propósito: no tiene API pública y se corre local/manual (ver
+docs/runbooks/xg-manual-fallback.md). La rama de Argentina se construye con las tablas
+vacías si SofaScore todavía no se corrió.
 
 Understat también crea (si no existen) las tablas raw de SofaScore, así dbt puede
 referenciar ambos sources sin fallar. Después corre `dbt build --select tag:current+`.
