@@ -1,0 +1,144 @@
+[
+  {
+    "name": "league",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "league_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "season_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_id",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "team_title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "match_date",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Fecha del partido tal como la devuelve Understat (se castea a TIMESTAMP en staging)."
+  },
+  {
+    "name": "h_a",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "h = local, a = visitante."
+  },
+  {
+    "name": "xg",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xga",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "npxg",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "npxga",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ppda_att",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ppda_def",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ppda_allowed_att",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ppda_allowed_def",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "deep",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "deep_allowed",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "scored",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "missed",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xpts",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "result",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "wins",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "draws",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "loses",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pts",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "npxgd",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

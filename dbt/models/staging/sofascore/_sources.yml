@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: sofascore
+    description: >
+      SofaScore (https://www.sofascore.com): xG y xA de la Liga Profesional Argentina
+      y respaldo manual de las 5 grandes. Se ingiere localmente con Playwright
+      (ingestion/sofascore.py); no corre en Airflow. Las tablas pueden estar vacías:
+      en ese caso los marts de Argentina no tienen filas (no hay xG inventado).
+    schema: "{{ env_var('BQ_SOFASCORE_DATASET', 'raw_sofascore') }}"
+    config:
+      loaded_at_field: _ingested_at
+    tables:
+      - name: seasons
+      - name: player_season

@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: stg_ss_seasons
+    description: Temporadas de cada torneo de SofaScore (Argentina puede tener Apertura/Clausura).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season_id]
+
+  - name: stg_ss_player_season
+    description: >
+      Una fila por jugador y temporada de SofaScore, con xG, xA, minutos y estadísticas
+      completas cuando se corrió en modo full. En modo top, `minutes` es null.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season_id, player_id]
+    columns:
+      - name: player_id
+        data_tests: [not_null]
+      - name: minutes
+        data_tests: [non_negative]
+      - name: xg
+        data_tests: [non_negative]
+      - name: xa
+        data_tests: [non_negative]
+      - name: source_mode
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [top, full]

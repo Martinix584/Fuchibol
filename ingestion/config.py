@@ -59,3 +59,57 @@ STATSBOMB_SCOPES = {
     "messi": [(11, s) for s in (37, 38, 39, 40, 41, 21, 22, 23, 24, 25, 26, 27, 2, 1, 4, 42, 90)],
 }
 STATSBOMB_SCOPE = os.getenv("STATSBOMB_SCOPE", "core")
+
+# ---------------------------------------------------------------------------
+# Understat: xG, xA, npxG, xGChain y xGBuildup de la temporada actual.
+# Solo cubre las 5 grandes ligas (no Argentina). Es la fuente automática de xG
+# para esas ligas; se ingiere a diario desde Airflow.
+# ---------------------------------------------------------------------------
+UNDERSTAT_BASE_URL = os.getenv("UNDERSTAT_BASE_URL", "https://understat.com")
+UNDERSTAT_LEAGUES = {
+    "EPL": "Premier League",
+    "La_liga": "La Liga",
+    "Serie_A": "Serie A",
+    "Bundesliga": "Bundesliga",
+    "Ligue_1": "Ligue 1",
+}
+UNDERSTAT_SCOPE = os.getenv("UNDERSTAT_SCOPE", "big5")
+# 0 = temporada europea en curso (julio a junio). Se puede fijar para backfills.
+UNDERSTAT_SEASON = int(os.getenv("UNDERSTAT_SEASON", "0") or 0)
+UNDERSTAT_DELAY_S = float(os.getenv("UNDERSTAT_DELAY_S", "2.5"))
+UNDERSTAT_MIN_INTERVAL_HOURS = float(os.getenv("UNDERSTAT_MIN_INTERVAL_HOURS", "6"))
+UNDERSTAT_USER_AGENT = os.getenv(
+    "UNDERSTAT_USER_AGENT", "fuchibol/1.0 (+https://github.com/martinix584/fuchibol)"
+)
+BQ_UNDERSTAT_DATASET = os.getenv("BQ_UNDERSTAT_DATASET", "raw_understat")
+GCS_UNDERSTAT_PREFIX = "raw/understat"
+UNDERSTAT_MANIFEST_BLOB = "manifests/understat.json"
+
+# ---------------------------------------------------------------------------
+# SofaScore: xG/xA de la Liga Profesional Argentina y respaldo manual para las
+# 5 grandes. No tiene API pública; se usa Playwright de forma local (nunca en
+# Airflow). Sus términos prohíben el scraping: leer docs/runbooks/xg-manual-fallback.md.
+# ---------------------------------------------------------------------------
+SOFASCORE_HOME_URL = os.getenv("SOFASCORE_HOME_URL", "https://www.sofascore.com")
+SOFASCORE_TOURNAMENTS = {
+    "EPL": {"id": 17, "name": "Premier League", "country": "England"},
+    "La_liga": {"id": 8, "name": "La Liga", "country": "Spain"},
+    "Serie_A": {"id": 23, "name": "Serie A", "country": "Italy"},
+    "Bundesliga": {"id": 35, "name": "Bundesliga", "country": "Germany"},
+    "Ligue_1": {"id": 34, "name": "Ligue 1", "country": "France"},
+    "ARG": {"id": 155, "name": "Liga Profesional Argentina", "country": "Argentina"},
+}
+SOFASCORE_SCOPE = os.getenv("SOFASCORE_SCOPE", "ARG")
+# top = solo top-players (xG/xA, sin minutos); full = plantillas + una request por jugador.
+SOFASCORE_MODE = os.getenv("SOFASCORE_MODE", "")
+SOFASCORE_SEASON = os.getenv("SOFASCORE_SEASON", "")
+SOFASCORE_RATE_LIMIT_S = float(os.getenv("SOFASCORE_RATE_LIMIT_S", "3"))
+SOFASCORE_DAILY_BUDGET = int(os.getenv("SOFASCORE_DAILY_BUDGET", "1000"))
+SOFASCORE_REFRESH_HOURS = float(os.getenv("SOFASCORE_REFRESH_HOURS", "6"))
+SOFASCORE_PROFILE_DIR = os.getenv(
+    "SOFASCORE_PROFILE_DIR", os.path.expanduser("~/.cache/fuchibol/sofascore-profile")
+)
+SOFASCORE_HEADLESS = os.getenv("SOFASCORE_HEADLESS", "true").lower() != "false"
+BQ_SOFASCORE_DATASET = os.getenv("BQ_SOFASCORE_DATASET", "raw_sofascore")
+GCS_SOFASCORE_PREFIX = "raw/sofascore"
+SOFASCORE_MANIFEST_BLOB = "manifests/sofascore.json"

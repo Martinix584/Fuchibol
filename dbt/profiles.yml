@@ -1,6 +1,6 @@
 # Las credenciales nunca van al repo: todo sale de variables de entorno.
 # dev  -> tu usuario (gcloud auth application-default login)
-# prod -> service account (la usa Airflow)
+# prod -> lo que apunte GOOGLE_APPLICATION_CREDENTIALS (service account o tu login de ADC)
 fuchibol:
   target: "{{ env_var('DBT_TARGET', 'dev') }}"
   outputs:
@@ -15,8 +15,7 @@ fuchibol:
       maximum_bytes_billed: 20000000000 # 20 GB por query: freno de seguridad de costos
     prod:
       type: bigquery
-      method: service-account
-      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS', '/opt/airflow/keys/sa.json') }}"
+      method: oauth
       project: "{{ env_var('GCP_PROJECT_ID', 'fuchibol-dev') }}"
       dataset: analytics
       location: "{{ env_var('BQ_LOCATION', 'US') }}"

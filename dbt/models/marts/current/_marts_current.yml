@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: mart_current_player_season
+    description: >
+      Jugador x liga-temporada de la temporada actual. Las 5 grandes salen de Understat
+      (o de SofaScore con xg_source_big5=sofascore); Argentina sale de SofaScore.
+      xg_source indica la fuente y evita mezclar modelos de xG en una misma fila.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [xg_source, player_id, league_code, season]
+    columns:
+      - name: player_id
+        data_tests: [not_null]
+      - name: xg
+        data_tests: [non_negative]
+      - name: xa
+        data_tests: [non_negative]
+      - name: minutes
+        data_tests: [non_negative]
+      - name: xg_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [understat, sofascore]
+
+  - name: mart_current_team_table
+    description: >
+      Tabla de equipos por liga-temporada con puntos reales, xG y xPts. Solo Understat:
+      SofaScore se usa para jugadores y el respaldo manual de las 5 grandes.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season, team_id]
+    columns:
+      - name: xg_for
+        data_tests: [non_negative]
+      - name: xg_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [understat]

@@ -2,7 +2,8 @@
 
 1. Carga a DuckDB partidos REALES de StatsBomb (bajados de GitHub o de una carpeta local
    con la misma estructura que el repo open-data) con el mismo esquema que en BigQuery.
-2. Genera datos sintéticos de Transfermarkt (con jugadores reales de esos partidos).
+2. Genera datos sintéticos de Transfermarkt (con jugadores reales de esos partidos) y de
+   Understat/SofaScore (temporada actual) con los esquemas de BigQuery.
 3. Corre en orden todos los modelos dbt compilados (salvo los de BigQuery ML) traduciendo
    el SQL de BigQuery a DuckDB, y después todos los data tests.
 4. Imprime un resumen (filas, tiempos, tests) y sale con error si falla algo.
@@ -31,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from bq_to_duckdb import TYPE_MAP, duck_type, prune, to_duckdb  # noqa: E402
+from synthetic_current_season import build as build_current_season  # noqa: E402
 from synthetic_transfermarkt import build as build_transfermarkt  # noqa: E402
 
 from ingestion import statsbomb  # noqa: E402
@@ -157,7 +159,12 @@ def main() -> int:
 
     Path(args.database).unlink(missing_ok=True) if args.database != ":memory:" else None
     con = duckdb.connect(args.database)
-    for schema in {n["schema"] for n in nodes.values()} | {"raw_transfermarkt", "raw_statsbomb"}:
+    for schema in {n["schema"] for n in nodes.values()} | {
+        "raw_transfermarkt",
+        "raw_statsbomb",
+        "raw_understat",
+        "raw_sofascore",
+    }:
         con.execute(f'create schema if not exists "{schema}"')
     tmp = Path(dbt_dir / "target" / "smoke")
     tmp.mkdir(parents=True, exist_ok=True)
@@ -167,6 +174,8 @@ def main() -> int:
         con, reader(args.statsbomb_dir), args.competition, args.season, args.matches, tmp
     )
     expected_map = build_transfermarkt(con, sb_players)
+    build_current_season(con, create_table, tmp)
+    print("Temporada actual: Understat + SofaScore sintéticos")
 
     summary = {"models": {}, "tests": {"pass": 0, "warn": 0, "fail": 0, "error": 0}, "failures": []}
     order = topological_order(nodes)

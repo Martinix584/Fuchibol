@@ -1,12 +1,13 @@
 """Imprime en Markdown las métricas de la última corrida, listas para pegar en el README."""
 
+from google.api_core.exceptions import NotFound
 from google.cloud import bigquery
 
 from ingestion import config
 
 QUERIES = {
     "Volumen (última ingesta por tabla)": """
-        select table_name as tabla, rows as filas, round(bytes / 1e6, 1) as mb,
+        select table_name as tabla, `rows` as filas, round(bytes / 1e6, 1) as mb,
                extract_seconds as seg_extract, load_seconds as seg_load
         from `{p}.{ops}.pipeline_runs`
         where true
@@ -59,8 +60,12 @@ def to_markdown(rows) -> str:
 def main() -> None:
     client = bigquery.Client(project=config.GCP_PROJECT_ID, location=config.BQ_LOCATION)
     for title, sql in QUERIES.items():
-        rows = client.query(sql.format(p=config.GCP_PROJECT_ID, ops=config.BQ_OPS_DATASET)).result()
-        print(f"### {title}\n\n{to_markdown(rows)}\n")
+        try:
+            rows = client.query(sql.format(p=config.GCP_PROJECT_ID, ops=config.BQ_OPS_DATASET)).result()
+            body = to_markdown(rows)
+        except NotFound:  # tabla que todavía no se construyó (por ejemplo, sin dbt-train)
+            body = "_sin datos_"
+        print(f"### {title}\n\n{body}\n")
 
 
 if __name__ == "__main__":

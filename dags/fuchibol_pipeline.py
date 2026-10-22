@@ -116,7 +116,7 @@ def fuchibol_pipeline():
 
     dbt_build_core = BashOperator(
         task_id="dbt_build_core",
-        bash_command=dbt_command("build --exclude tag:ml"),
+        bash_command=dbt_command("build --exclude tag:ml --exclude tag:current"),
         trigger_rule="none_failed",  # una rama sin cambios queda "skipped", no frena a dbt
     )
     train_model = BashOperator(

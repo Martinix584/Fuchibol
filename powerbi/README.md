@@ -25,6 +25,8 @@ paleta, validada para daltonismo, que los gráficos del README).
 | `marts.fct_sb_shots` | tiro | `player_id` → `mart_sb_player_seasons` (con competición) |
 | `marts.fct_sb_team_matches`, `marts.mart_sb_team_seasons` | equipo × partido / torneo | |
 | `marts.mart_player_scouting` | jugador × competición (cruzado) | `tm_player_id` → `dim_players` |
+| `marts.mart_current_player_season` | jugador × liga × temporada actual | `xg_source` distingue Understat/SofaScore; `player_key` es único |
+| `marts.mart_current_team_table` | equipo × liga × temporada actual | solo Understat |
 | `ops.pipeline_runs`, `ops.dbt_results` | corrida | |
 
 Para la competición, armá una tabla `Competicion` con `competition_id`, `season_id` y una clave
@@ -46,6 +48,9 @@ Para la competición, armá una tabla `Competicion` con `competition_id`, `seaso
 6. **Mapa de tiros y tabla por xG**: tiros sobre una imagen de medio campo (dispersión con ejes fijos 0-80 y
    60-120, tamaño = xG, color = gol); tabla real vs. xPts como en `docs/img/points_vs_xpts_2022.png`.
 7. **Salud del pipeline**: filas por tabla y corrida, duración, tests que pasan o fallan, modelos más lentos.
+8. **Temporada actual**: tabla y dispersión de `mart_current_player_season` (xG, xA, npxG, goles - xG) con
+   `xg_source` como leyenda y `season`/`league_name` como filtros; tabla real vs. xPts de
+   `mart_current_team_table`. Aclarar en la página que las 5 grandes son Understat y Argentina SofaScore.
 
 ## Medidas DAX sugeridas
 

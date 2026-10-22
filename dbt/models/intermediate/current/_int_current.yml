@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: int_us_player_season
+    description: Jugador x liga-temporada de Understat con métricas cada 90 y eficiencia.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season, player_id]
+    columns:
+      - name: xg
+        data_tests: [non_negative]
+      - name: xa
+        data_tests: [non_negative]
+
+  - name: int_us_team_season
+    description: Equipo x liga-temporada con puntos reales y xPts de Understat.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season, team_id]
+    columns:
+      - name: xg_for
+        data_tests: [non_negative]
+      - name: xpts
+        data_tests: [non_negative]
+
+  - name: int_ss_player_season
+    description: Jugador x temporada de SofaScore con métricas cada 90 (null en modo top).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [league_code, season_id, player_id]

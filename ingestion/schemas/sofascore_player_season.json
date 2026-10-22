@@ -1,0 +1,140 @@
+[
+  {
+    "name": "league_code",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "league_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season_id",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "season_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season_year",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Año de la temporada (2026), para unirlo con Understat en el mart."
+  },
+  {
+    "name": "player_id",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "player_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "position",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_mode",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "top = datos de top-players (sin minutos); full = una request por jugador."
+  },
+  {
+    "name": "appearances",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "minutes",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "goals",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "assists",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "shots",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "shots_on_target",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "key_passes",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "penalty_goals",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "yellow_cards",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "red_cards",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "rating",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_goals",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_assists",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_goals_on_target",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "raw",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "JSON de la respuesta de SofaScore, para auditoría."
+  },
+  {
+    "name": "_ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

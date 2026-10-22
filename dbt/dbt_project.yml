@@ -16,6 +16,9 @@ vars:
   ml_min_minutes: 900
   # Ventana (días) para medir el rendimiento antes y después de un fichaje
   transfer_window_days: 365
+  # Fuente de xG para las 5 grandes: understat (default) o sofascore (respaldo manual).
+  # Se cambia solo con --vars '{xg_source_big5: sofascore}'; nunca se mezclan en una fila.
+  xg_source_big5: understat
 
 models:
   fuchibol:

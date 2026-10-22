@@ -41,7 +41,9 @@ services:
       - ./dags:/opt/airflow/dags
       - ./ingestion:/opt/airflow/ingestion
       - ./dbt:/opt/airflow/dbt
-      - ./keys:/opt/airflow/keys:ro
+      # Clave de service account o, si la organización no deja crear claves, tu ADC:
+      # GCP_CREDENTIALS_FILE=~/.config/gcloud/application_default_credentials.json en .env
+      - ${GCP_CREDENTIALS_FILE:-./keys/sa.json}:/opt/airflow/keys/sa.json:ro
 
 volumes:
   postgres-data:

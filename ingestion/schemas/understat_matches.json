@@ -1,0 +1,107 @@
+[
+  {
+    "name": "league",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "league_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "season_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "match_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "is_result",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "match_date",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "home_team_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "home_team_title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "home_team_short_title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "away_team_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "away_team_title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "away_team_short_title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "home_goals",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "away_goals",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "home_xg",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "away_xg",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "forecast_win",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "forecast_draw",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "forecast_loss",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

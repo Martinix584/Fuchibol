@@ -1,4 +1,4 @@
-.PHONY: setup test lint smoke test-dag extract dbt-build dbt-train dbt-docs airflow-up airflow-down metrics charts
+.PHONY: setup setup-sofascore test lint smoke test-dag extract dbt-build dbt-train dbt-docs dbt-current understat sofascore airflow-up airflow-down metrics charts
 
 DBT = cd dbt && dbt
 DBT_FLAGS = --profiles-dir .
@@ -6,6 +6,10 @@ SMOKE_DB ?= /tmp/fuchibol-smoke.duckdb
 
 setup:            ## Entorno local (Python 3.12)
 	python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+
+setup-sofascore:  ## Playwright para la ingesta local/manual de SofaScore
+	.venv/bin/pip install -r requirements-sofascore.txt
+	.venv/bin/python -m playwright install chromium
 
 test:             ## Tests unitarios de Python + parseo de dbt
 	pytest -q
@@ -24,11 +28,20 @@ test-dag:         ## dag.test() del DAG en 4 escenarios (requiere Airflow instal
 charts: smoke     ## Regenera los gráficos del README con datos reales
 	PYTHONPATH=. python scripts/readme_charts.py $(SMOKE_DB)
 
-extract:          ## Ingesta de las dos fuentes a GCS + BigQuery (sin Airflow)
+extract:          ## Ingesta de las fuentes automáticas a GCS + BigQuery (sin Airflow)
 	PYTHONPATH=. python scripts/run_ingestion.py
 
-dbt-build:        ## Seeds, modelos, snapshot, data tests y unit tests (sin ML)
-	$(DBT) build $(DBT_FLAGS) --exclude tag:ml
+dbt-build:        ## Seeds, modelos, snapshot, data tests y unit tests (sin ML ni temporada actual)
+	$(DBT) build $(DBT_FLAGS) --exclude tag:ml --exclude tag:current
+
+dbt-current:      ## Modelos de la temporada actual (Understat + SofaScore Argentina)
+	$(DBT) build $(DBT_FLAGS) --select tag:current+
+
+understat:        ## Ingesta de Understat (temporada actual de las 5 grandes)
+	PYTHONPATH=. python -m ingestion.understat
+
+sofascore:        ## Ingesta local/manual de SofaScore (Argentina; requiere setup-sofascore)
+	PYTHONPATH=. python -m ingestion.sofascore --scope ARG --mode full --headful
 
 dbt-train:        ## Entrena el modelo de BigQuery ML y construye sus tablas
 	$(DBT) run-operation train_market_value_model $(DBT_FLAGS)
