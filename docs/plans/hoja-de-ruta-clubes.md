@@ -119,7 +119,8 @@ tocar sin instalar nada**.
 ## 5. Etapa 3: producto (1-2 semanas)
 
 1. **Power BI:** actualizar el reporte con xT, percentiles y PAdj; capturas definitivas + GIF corto, y una
-   captura del grafo de linaje de dbt docs (<https://martinix584.github.io/Fuchibol/>).
+   captura del grafo de linaje de dbt docs (<https://martinix584.github.io/Fuchibol/>). Power BI Desktop no
+   corre en Linux: hace falta una VM de Windows (o usar Looker Studio como alternativa para el dashboard web).
 2. **Exportar los marts a Parquet** desde BigQuery (datos reales) para la app.
 3. **App pública** (Evidence.dev o Streamlit Community Cloud) sobre esos Parquet con DuckDB: radar de
    comparación de jugadores, buscador de subvaluados, ROI de fichajes y mapa de tiros. Link arriba de todo
@@ -192,7 +193,7 @@ diferencia en vez de suponerla.
 ## 8. Criterios de aceptación
 
 - [x] `ops.pipeline_runs` tiene filas después de `make understat`, `make sofascore` y de cada corrida del DAG con datos nuevos.
-- [ ] La tabla de métricas del README no tiene ningún *pendiente* y todos sus números salen de GCP (falta el costo mensual).
+- [x] La tabla de métricas del README no tiene ningún *pendiente* y todos sus números salen de GCP (costo: US$0 dentro del free tier, con alerta a US$1/mes).
 - [x] `xt_added_per_90`, `position_group`, métricas PAdj y percentiles en los marts, con tests de dbt.
 - [x] Smoke en verde después de cada etapa (CI corre al pushear).
 - [ ] Capturas de Power BI y del linaje en el README, tomadas después de la etapa 2.

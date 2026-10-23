@@ -84,7 +84,7 @@ flowchart LR
 
 ## Modelo de datos (dbt)
 
-53 modelos en 4 capas, 4 seeds, 1 snapshot, 171 data tests, 5 unit tests y 1 exposure (el reporte).
+53 modelos en 4 capas, 4 seeds, 1 snapshot, 172 data tests, 5 unit tests y 1 exposure (el reporte).
 
 ```mermaid
 flowchart LR
@@ -195,10 +195,10 @@ las 5 grandes 2026/27 con SofaScore en modo `full` (2.141 jugadores) para la com
 | Volumen | 160 MB en GCS y 1,4 GB en BigQuery |
 | Duración de `dbt build` (sin ML ni temporada actual) | ~3 min (173 nodos) |
 | Carga SofaScore 5 grandes (`full`) | 2.141 jugadores en ~3 h, una liga por proceso y 4 s entre requests |
-| Data tests | Build principal: 120 pasan y 4 avisos. Temporada actual: 42 pasan y 1 aviso (los 86 jugadores de SofaScore que patearon sin xG). Ningún error |
+| Data tests | Build principal: 168 pasan y 4 avisos. Temporada actual: 54 pasan y 1 aviso (los 86 jugadores de SofaScore que patearon sin xG). Ningún error |
 | Jugadores cruzados StatsBomb → Transfermarkt | 2.551 de 3.080 (82,8 %): 2.218 nombre + nacionalidad, 167 palabras contenidas, 116 solo nombre, 49 nombre completo, 1 manual |
 | Modelo ML: R² / MAE (log del valor) | R² 0,83, MAE 0,46 y error mediano 0,37 sobre 10.072 filas de evaluación (≈ ×1,6 de error típico en el valor). Leyó 54.463 temporadas-jugador y entrenó con 40.285 en 43 s; predice 4.106 jugadores de 2025 |
-| Costo mensual | Sin medir |
+| Costo mensual | US$0 dentro del free tier: 5,8 GB de queries y ~1,4 GB de storage en BigQuery (límites: 1 TB y 10 GB/mes), ~160 MB en GCS (límite: 5 GB). Alerta de presupuesto a US$1/mes, con avisos al 50 % y al 100 % |
 
 ## Calidad
 
@@ -209,8 +209,8 @@ las 5 grandes 2026/27 con SofaScore en modo `full` (2.141 jugadores) para la com
 | `dbt parse` (SQL, refs, YAML) | `dbt/` | CI |
 | Smoke test de punta a punta con partidos reales | `tests/smoke/` | CI |
 | `dag.test()` del DAG en 4 escenarios (las dos fuentes, una, la otra, ninguna) | `tests/dags/` | CI |
-| 156 data tests de dbt (genéricos, propios y de negocio) | `dbt/` | cada `dbt build` |
-| 4 unit tests de dbt (minutos, xPts, veredicto de fichajes) | `dbt/models/**/_*.yml` | cada `dbt build` |
+| 172 data tests de dbt (genéricos, propios y de negocio) | `dbt/` | cada `dbt build` |
+| 5 unit tests de dbt (xPts, xT, minutos, veredicto de fichajes) | `dbt/models/**/_*.yml` | cada `dbt build` |
 
 ## Decisiones de diseño
 
