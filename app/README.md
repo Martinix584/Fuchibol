@@ -21,8 +21,8 @@ make app              # http://localhost:8501
 Streamlit necesita un servidor Python, así que **no corre en Vercel** tal cual. Dos caminos:
 
 1. **Streamlit Community Cloud (recomendado, gratis):**
-   - `make export-parquet` y subir `data/parquet/` al repo (`git add -f data/parquet`,
-     7,7 MB; hoy está en `.gitignore`).
+   - `make export-parquet` y commitear `data/parquet/` (7,7 MB; está versionado a propósito
+     porque Streamlit lee los datos del repo).
    - En <https://share.streamlit.io>: New app → repo → branch `main` → main file
      `app/streamlit_app.py`; en Advanced settings, Python 3.12 o 3.13.
    - Streamlit usa `app/requirements.txt`, que tiene prioridad sobre el `requirements.txt`

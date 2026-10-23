@@ -76,7 +76,11 @@ def pitch_layout(fig: go.Figure) -> None:
 
 def main() -> None:
     st.title("⚽ Fuchibol")
-    st.caption("Datos reales de Transfermarkt, StatsBomb, Understat y SofaScore.")
+    st.caption(
+        "Datos: [Transfermarkt](https://github.com/dcaribou/transfermarkt-datasets) (CC0), "
+        "[StatsBomb Open Data](https://github.com/statsbomb/open-data), "
+        "[Understat](https://understat.com) y [SofaScore](https://www.sofascore.com)."
+    )
 
     if not (DATA / "marts").exists():
         st.error("Falta `data/parquet/`. Corré `make export-parquet` y volvé a abrir la app.")

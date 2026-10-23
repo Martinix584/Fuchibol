@@ -8,8 +8,8 @@
 > código. Las decisiones de la sección 2 ya se discutieron con el usuario: no rediscutirlas.
 >
 > **Estado (octubre 2026):** el pipeline histórico (Transfermarkt + StatsBomb) y la temporada actual
-> (Understat + SofaScore) andan. En GCP solo corrió la temporada actual; Transfermarkt, StatsBomb y
-> el modelo de valor todavía no se cargaron.
+> (Understat + SofaScore) andan y están cargados en GCP: Transfermarkt (2,87 M filas crudas) y
+> StatsBomb `core` (1,25 M) desde el 22/10/2026, con marts y modelo de valor en `prod` y `dev`.
 >
 > **SofaScore Argentina cargado (22/10/2026)** con `make sofascore` (modo `full`): Primera LPF 2026,
 > 30 equipos, 839 jugadores (62 G, 276 D, 317 M, 184 F), 554 xG en total. `make dbt-current` pasa 48/48 y
