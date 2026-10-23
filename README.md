@@ -319,6 +319,19 @@ cd dbt && dbt build --profiles-dir . --vars '{xg_source_big5: sofascore}' --sele
 El respaldo es **manual a propósito**: no hay cambio automático de fuente. Ver
 [`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
 
+### App pública
+
+Streamlit sobre Parquet + DuckDB, sin credenciales de GCP al abrirla:
+
+```bash
+make export-parquet   # marts + ml de BigQuery -> data/parquet/ (requiere ADC)
+make app              # http://localhost:8501
+```
+
+Páginas: radar de percentiles (temporada actual y StatsBomb), subvaluados, ROI de fichajes y mapa de tiros.
+Para publicarla, ver [`app/README.md`](app/README.md). Antes de hacerla pública, revisá licencias: Understat y
+SofaScore no tienen licencia explícita de redistribución.
+
 > El **sandbox** de BigQuery (sin tarjeta) no alcanza: no permite `MERGE`, que usan los snapshots. Con la
 > facturación activa, el alcance `core` entra en el nivel gratuito (10 GB de almacenamiento y 1 TB de consultas por
 > mes). Configurá igual una **alerta de presupuesto**. Los alcances `big5_2015`, `messi` o `all` suman varios GB.
@@ -348,8 +361,10 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 │   ├── smoke/                       # dbt en DuckDB con datos reales y sintéticos
 │   └── dags/                        # escenarios del DAG
 ├── powerbi/                         # guía del reporte y tema
+├── app/                             # Streamlit: radar, subvaluados, fichajes y tiros
+├── data/parquet/                    # export de marts + ml para la app (gitignored)
 ├── docs/                            # plan y runbook del respaldo manual de xG
-├── scripts/                         # ingesta manual, smoke, test del DAG, métricas, gráficos
+├── scripts/                         # ingesta manual, smoke, test del DAG, métricas, gráficos, export Parquet
 ├── docker/ + docker-compose.yml     # Airflow local
 └── .github/workflows/ci.yml         # lint, pytest, dbt parse, smoke y DAG
 ```

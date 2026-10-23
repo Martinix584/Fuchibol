@@ -22,3 +22,6 @@ logs/
 
 # Power BI (los .pbix pueden pesar mucho; subilos con Git LFS si querés versionarlos)
 *.pbix.bak
+
+# Datos exportados para la app (se regeneran con make export-parquet)
+data/parquet/

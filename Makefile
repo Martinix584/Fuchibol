@@ -1,4 +1,4 @@
-.PHONY: setup setup-sofascore test lint smoke test-dag extract dbt-build dbt-train dbt-docs dbt-current understat sofascore airflow-up airflow-down metrics charts
+.PHONY: setup setup-sofascore test lint smoke test-dag extract dbt-build dbt-train dbt-docs dbt-current understat sofascore airflow-up airflow-down metrics charts export-parquet app
 
 PY ?= .venv/bin/python
 DBT = cd dbt && $(CURDIR)/.venv/bin/dbt
@@ -22,8 +22,8 @@ test:             ## Tests unitarios de Python + parseo de dbt
 	$(DBT) parse $(DBT_FLAGS)
 
 lint:
-	$(PY) -m ruff check ingestion dags tests scripts
-	$(PY) -m ruff format --check ingestion dags tests scripts
+	$(PY) -m ruff check ingestion dags tests scripts app
+	$(PY) -m ruff format --check ingestion dags tests scripts app
 
 smoke:            ## dbt de punta a punta en DuckDB con el Mundial 2022 real (sin GCP)
 	PATH=$(CURDIR)/.venv/bin:$$PATH scripts/smoke.sh --database $(SMOKE_DB)
@@ -64,3 +64,9 @@ airflow-down:
 
 metrics:          ## Imprime la tabla de métricas para el README
 	PYTHONPATH=. $(PY) scripts/metrics_report.py
+
+export-parquet:   ## Exporta marts y ml a data/parquet para la app
+	PYTHONPATH=. $(PY) scripts/export_parquet.py
+
+app: export-parquet  ## Corre la app pública en http://localhost:8501
+	$(PY) -m streamlit run app/streamlit_app.py
