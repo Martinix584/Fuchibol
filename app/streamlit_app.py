@@ -132,11 +132,8 @@ def main() -> None:
             if df.empty:
                 st.info("No hay percentiles de StatsBomb.")
             else:
-                comp = st.selectbox(
-                    "Competición",
-                    sorted(df["competition_name"] + " " + df["season_name"]),
-                )
                 df["comp"] = df["competition_name"] + " " + df["season_name"]
+                comp = st.selectbox("Competición", sorted(df["comp"].drop_duplicates()))
                 part = df[df["comp"] == comp].copy()
                 part["label"] = (
                     part["player_name"]
