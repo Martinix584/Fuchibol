@@ -1,7 +1,8 @@
 # Hoja de ruta: Fuchibol como sistema de datos de un club
 
-> **Avance (22/10/2026):** etapas 1 y 2 implementadas y la 7.1 medida (ver criterios al final). Modelo de valor entrenado en local
-> con scikit-learn (R² 0,83; la idea era BigQuery ML, pero no valía la pena acá). Pendiente: etapa 3 (Power BI, app, SkillCorner), etapa 4 y la 7.2.
+> **Avance (23/10/2026):** etapas 1 y 2 implementadas, 7.1 y 7.2 medidas (ver criterios al final). Modelo de valor
+> entrenado en local con scikit-learn (R² 0,83; la idea era BigQuery ML, pero no valía la pena acá). Pendiente:
+> etapa 3 (Power BI, app, SkillCorner) y etapa 4.
 >
 > Plan a futuro. Está pensado para leerse de punta a punta antes de tocar
 > código. Las decisiones de la sección 2 ya se discutieron con el usuario: no rediscutirlas.
@@ -13,6 +14,10 @@
 > **SofaScore Argentina cargado (22/10/2026)** con `make sofascore` (modo `full`): Primera LPF 2026,
 > 30 equipos, 839 jugadores (62 G, 276 D, 317 M, 184 F), 554 xG en total. `make dbt-current` pasa 48/48 y
 > `mart_current_player_season` ya tiene filas `ARG` con `xg_source = 'sofascore'`.
+>
+> **SofaScore 5 grandes cargado (23/10/2026)** con `--mode full`, una liga por proceso: EPL 444, La Liga 461,
+> Serie A 457, Bundesliga 386 y Ligue 1 393 jugadores (2.141 en total). La comparación 7.2 da correlación
+> 0,97-0,98 con Understat y 2-10 % menos xG; está en el README.
 
 ## 1. Objetivo
 
@@ -198,4 +203,5 @@ diferencia en vez de suponerla.
 - [x] Comparación Understat vs. StatsBomb (2015/16) con correlación, diferencia media y cobertura por liga,
       resumida en el README (`scripts/compare_xg.py`, en local; la Bundesliga queda afuera porque StatsBomb trae
       solo 34 partidos).
-- [ ] Comparación Understat vs. SofaScore (2026/27, 5 grandes) con las mismas métricas.
+- [x] Comparación Understat vs. SofaScore (2026/27, 5 grandes) con las mismas métricas: correlación 0,97-0,98,
+       SofaScore da 2-10 % menos xG y la cobertura es 96-99 % (`scripts/compare_xg_current.py`, 23/10/2026).

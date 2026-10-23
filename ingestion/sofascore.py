@@ -33,9 +33,11 @@ Ver docs/runbooks/xg-manual-fallback.md.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import random
+import re
 import time
 import uuid
 from datetime import UTC, date, datetime, timedelta
@@ -132,6 +134,27 @@ def parse_number(value, cast=float):
         return None
 
 
+def parse_season_year(value, name: str | None = None) -> int | None:
+    """Año de inicio de una temporada: ``"2026"`` y ``"26/27"`` dan 2026.
+
+    SofaScore usa ``year="2026"`` en Argentina pero ``"26/27"`` en las ligas
+    europeas; sin esto `season_year` quedaba null y esas filas no se podían unir
+    con Understat en el mart de la temporada actual.
+    """
+    year = parse_number(value, int)
+    if year is not None:
+        return year
+    for text in (value if isinstance(value, str) else "", name or ""):
+        four = re.search(r"\b(?:19|20)\d{2}\b", text)
+        if four:
+            return int(four.group(0))
+        two = re.search(r"(\d{2})\s*/\s*(\d{2})", text)
+        if two:
+            start = int(two.group(1))
+            return 1900 + start if start >= 50 else 2000 + start
+    return None
+
+
 def resolve_scope(scope: str | None = None) -> list[str]:
     """Traduce "ARG", "big5", "all" o una lista separada por comas a códigos."""
     scope = scope or config.SOFASCORE_SCOPE
@@ -214,7 +237,7 @@ def top_players_rows(
     """
     season_id = parse_number(season.get("id"), int)
     season_name = season.get("name")
-    season_year = parse_number(season.get("year"), int)
+    season_year = parse_season_year(season.get("year"), season_name)
     merged: dict[int, dict] = {}
 
     for category, entries in (payload.get("topPlayers") or {}).items():
@@ -293,7 +316,7 @@ def player_stats_row(
         "league_name": league_name,
         "season_id": parse_number(season.get("id"), int),
         "season_name": season.get("name"),
-        "season_year": parse_number(season.get("year"), int),
+        "season_year": parse_season_year(season.get("year"), season.get("name")),
         "player_id": top_row["player_id"],
         "player_name": top_row.get("player_name"),
         "team_id": top_row.get("team_id"),
@@ -512,28 +535,45 @@ class SofaScoreClient:
         # sin el prefijo para que se lean como documentación.
         if not path.startswith("/api/"):
             path = f"/api/v1{path}"
-        result = self._page.evaluate(
-            """
-            async (url) => {
-              const controller = new AbortController();
-              const timer = setTimeout(() => controller.abort(), 30000);
-              try {
-                const response = await fetch(url, {
-                  headers: {
-                    "Accept": "application/json",
-                    "X-Requested-With": "XMLHttpRequest"
-                  },
-                  credentials: "include",
-                  signal: controller.signal
-                });
-                return { status: response.status, body: await response.text() };
-              } finally {
-                clearTimeout(timer);
-              }
-            }
-            """,
-            path,
-        )
+        try:
+            result = self._page.evaluate(
+                """
+                async (url) => {
+                  const controller = new AbortController();
+                  const timer = setTimeout(() => controller.abort(), 30000);
+                  try {
+                    const response = await fetch(url, {
+                      headers: {
+                        "Accept": "application/json",
+                        "X-Requested-With": "XMLHttpRequest"
+                      },
+                      credentials: "include",
+                      signal: controller.signal
+                    });
+                    return { status: response.status, body: await response.text() };
+                  } finally {
+                    clearTimeout(timer);
+                  }
+                }
+                """,
+                path,
+            )
+        except Exception as exc:  # noqa: BLE001 - el navegador puede colgarse en el challenge
+            # En el captcha el fetch queda esperando (AbortError) o Cloudflare navega la
+            # página a captcha.html y destruye el contexto: son bloqueos, no errores
+            # fatales. Así `_wait_for_session` sigue esperando en vez de abortar la ingesta.
+            message = str(exc)
+            if any(
+                token in message
+                for token in (
+                    "AbortError",
+                    "Execution context was destroyed",
+                    "Target closed",
+                    "Frame was detached",
+                )
+            ):
+                raise SofaScoreBlocked(f"SofaScore cortó la request en {path}: {message}") from exc
+            raise
         status, body = result["status"], result["body"]
         if status == 404:
             raise SofaScoreNotFound(f"SofaScore 404 en {path}")
@@ -726,6 +766,23 @@ def ingest_tournament(
     }
     save_manifest(manifest)
     return results
+
+
+def fetch_events(
+    event_ids, client: SofaScoreClient | None = None, headless: bool = True, path: str = "/event/{}"
+):
+    """Genera `(event_id, payload)` para cada partido usando una sola sesión de navegador.
+
+    Si se pasa `client`, lo reutiliza (y no lo cierra); si no, abre uno para todo el lote.
+    Es un generador: el que consume puede ir guardando en tandas y, si salta
+    `BudgetExhausted` o `SofaScoreBlocked`, conserva lo que ya procesó.
+    """
+    with contextlib.nullcontext(client) if client is not None else SofaScoreClient(headless=headless) as c:
+        for event_id in dict.fromkeys(event_ids):  # dedup conservando el orden
+            try:
+                yield event_id, c.get(path.format(event_id))
+            except SofaScoreNotFound:
+                log.info("SofaScore: el partido %s no existe", event_id)
 
 
 def ingest_all(

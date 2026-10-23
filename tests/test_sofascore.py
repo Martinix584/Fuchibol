@@ -14,6 +14,7 @@ from ingestion.sofascore import (
     manifest_key,
     mode_for,
     parse_number,
+    parse_season_year,
     player_stats_row,
     resolve_scope,
     roster_players,
@@ -309,6 +310,46 @@ def test_fetch_raw_html_is_still_a_challenge():
         client._fetch_raw("/unique-tournament/155/seasons")
 
 
+@pytest.mark.parametrize(
+    ("value", "name", "expected"),
+    [
+        ("2026", None, 2026),
+        (2026, None, 2026),
+        ("26/27", "Premier League 26/27", 2026),
+        (None, "LaLiga 26/27", 2026),
+        ("2026/27", None, 2026),
+        ("99/00", None, 1999),
+        (None, "Torneo sin año", None),
+    ],
+)
+def test_parse_season_year(value, name, expected):
+    assert parse_season_year(value, name) == expected
+
+
+def test_fetch_raw_timeout_is_a_challenge():
+    class TimeoutPage:
+        def evaluate(self, script, path):
+            raise RuntimeError("Page.evaluate: AbortError: signal is aborted without reason")
+
+    client = SofaScoreClient()
+    client._page = TimeoutPage()
+    with pytest.raises(SofaScoreBlocked):
+        client._fetch_raw("/unique-tournament/155/seasons")
+
+
+def test_fetch_raw_context_destroyed_is_a_challenge():
+    class NavigatedPage:
+        def evaluate(self, script, path):
+            raise RuntimeError(
+                "Page.evaluate: Execution context was destroyed, most likely because of a navigation"
+            )
+
+    client = SofaScoreClient()
+    client._page = NavigatedPage()
+    with pytest.raises(SofaScoreBlocked):
+        client._fetch_raw("/unique-tournament/155/seasons")
+
+
 def test_main_records_ingestion_metrics(monkeypatch):
     from ingestion import metrics, sofascore
 
@@ -320,3 +361,36 @@ def test_main_records_ingestion_metrics(monkeypatch):
     monkeypatch.setattr(metrics, "record_ingestion", lambda run_id, items: recorded.append((run_id, items)))
     sofascore.main()
     assert recorded and recorded[0][0].startswith("manual__") and recorded[0][1] == loaded
+
+
+def test_fetch_events_reuses_one_session_and_skips_missing(monkeypatch):
+    from ingestion import sofascore
+
+    opened = []
+
+    class FakeClient:
+        def __init__(self, headless=True):
+            opened.append(self)
+            self.paths = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.closed = True
+
+        def get(self, path):
+            self.paths.append(path)
+            if path == "/event/2":
+                raise SofaScoreNotFound(path)
+            return {"path": path}
+
+    monkeypatch.setattr(sofascore, "SofaScoreClient", FakeClient)
+    out = list(sofascore.fetch_events([1, 2, 1, 3]))
+    assert [e for e, _ in out] == [1, 3]
+    assert len(opened) == 1 and opened[0].closed
+    assert opened[0].paths == ["/event/1", "/event/2", "/event/3"]
+
+    shared = FakeClient()
+    list(sofascore.fetch_events([4], client=shared))
+    assert len(opened) == 2 and not hasattr(shared, "closed")

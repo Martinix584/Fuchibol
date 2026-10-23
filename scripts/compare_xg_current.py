@@ -1,8 +1,10 @@
 """Compara el xG de Understat y SofaScore en la temporada actual (plan 7.2).
 
-Lee ``marts.mart_current_player_season`` de BigQuery (las dos fuentes ya cargadas) y
-cruza jugadores por liga + equipo + nombre. No mezcla fuentes: solo mide cuánto se
-separan. Pensado para correr después de cargar las 5 grandes con SofaScore en modo full.
+Lee los modelos ``int_us_player_season`` e ``int_ss_player_season`` de BigQuery, que
+conservan las dos fuentes por separado (el mart elige una u otra según
+``xg_source_big5``), y cruza jugadores por liga + equipo + nombre. No mezcla fuentes:
+solo mide cuánto se separan. Pensado para correr después de cargar las 5 grandes con
+SofaScore en modo full.
 
     PYTHONPATH=. .venv/bin/python scripts/compare_xg_current.py
     PYTHONPATH=. .venv/bin/python scripts/compare_xg_current.py --leagues EPL --season 2026
@@ -14,6 +16,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import os
 import re
 import statistics
 import unicodedata
@@ -51,8 +54,43 @@ def map_teams(us_teams: set[str], ss_teams: set[str]) -> dict[str, str]:
     return mapping
 
 
+def _pick(candidates: list[dict], name: str, used: set[str], min_tokens: int = 2) -> dict | None:
+    """Elige un candidato único; si hay dudas, devuelve None (no cruza mal).
+
+    Con `min_tokens=1` acepta apodos de una palabra dentro del mismo equipo
+    ("Gabriel" -> "Gabriel Magalhães"); en la liga entera exige dos para no cruzar
+    homónimos.
+    """
+    available = [s for s in candidates if s["player_key"] not in used]
+    tokens = set(name.split())
+    exact = [s for s in available if norm(s["player_name"]) == name]
+    subset = []
+    for s in available:
+        other = set(norm(s["player_name"]).split())
+        if min(len(tokens), len(other)) >= min_tokens and (tokens <= other or other <= tokens):
+            subset.append(s)
+    if len(exact) == 1:
+        return exact[0]
+    if not exact and len(subset) == 1:
+        return subset[0]
+    if not exact and not subset:
+        scored = sorted(
+            ((difflib.SequenceMatcher(None, name, norm(s["player_name"])).ratio(), s) for s in available),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+        if scored and scored[0][0] >= 0.85 and (len(scored) == 1 or scored[1][0] < scored[0][0] - 0.05):
+            return scored[0][1]
+    return None
+
+
 def match_players(us: list[dict], ss: list[dict], team_map: dict[str, str]) -> list[tuple[dict, dict]]:
-    """Pares (Understat, SofaScore) únicos; los ambiguos quedan afuera."""
+    """Pares (Understat, SofaScore) únicos; los ambiguos quedan afuera.
+
+    Primero busca dentro de los equipos mapeados (Understat a veces lista varios
+    clubes separados por coma); si el nombre es único en la liga, acepta el cruce
+    aunque el nombre del equipo no coincida (Brest / Stade Brestois 29).
+    """
     by_team: dict[str, list[dict]] = defaultdict(list)
     for row in ss:
         by_team[row["team_name"]].append(row)
@@ -60,27 +98,18 @@ def match_players(us: list[dict], ss: list[dict], team_map: dict[str, str]) -> l
     pairs: list[tuple[dict, dict]] = []
     used: set[str] = set()
     for u in us:
-        team = team_map.get(u["team_name"])
-        candidates = by_team.get(team, []) if team else []
         name = norm(u["player_name"])
-        exact = [s for s in candidates if norm(s["player_name"]) == name]
-        tokens = set(name.split())
-        subset = [s for s in candidates if tokens and tokens <= set(norm(s["player_name"]).split())]
-        found = exact if len(exact) == 1 else subset if not exact and len(subset) == 1 else []
-        if not found and candidates:
-            scored = sorted(
-                (
-                    (difflib.SequenceMatcher(None, name, norm(s["player_name"])).ratio(), s)
-                    for s in candidates
-                ),
-                key=lambda item: item[0],
-                reverse=True,
-            )
-            if scored and scored[0][0] >= 0.85 and (len(scored) == 1 or scored[1][0] < scored[0][0] - 0.05):
-                found = [scored[0][1]]
-        if found and found[0]["player_key"] not in used:
-            used.add(found[0]["player_key"])
-            pairs.append((u, found[0]))
+        candidates: list[dict] = []
+        for part in u["team_name"].split(","):
+            team = team_map.get(part.strip())
+            if team:
+                candidates += by_team.get(team, [])
+        found = _pick(candidates, name, used, min_tokens=1)
+        if not found:
+            found = _pick(ss, name, used)
+        if found:
+            used.add(found["player_key"])
+            pairs.append((u, found))
     return pairs
 
 
@@ -105,18 +134,19 @@ def compare(pairs: list[tuple[dict, dict]], us_total: float, ss_total: float) ->
 def load_rows(
     client: bigquery.Client, dataset: str, season: int, source: str, leagues: list[str]
 ) -> list[dict]:
+    table = "int_us_player_season" if source == "understat" else "int_ss_player_season"
+    season_column = "season" if source == "understat" else "season_year"
     sql = f"""
-        select player_name, team_name, league_code, xg, xa, shots, key_passes, minutes, player_key
-        from `{client.project}.{dataset}.mart_current_player_season`
-        where season = @season
-          and xg_source = @source
+        select player_name, team_name, league_code, xg, xa, shots, key_passes, minutes,
+               concat('{source}', ':', cast(player_id as string)) as player_key
+        from `{client.project}.{dataset}.{table}`
+        where {season_column} = @season
           and league_code in unnest(@leagues)
           and xg is not null
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("season", "INT64", season),
-            bigquery.ScalarQueryParameter("source", "STRING", source),
             bigquery.ArrayQueryParameter("leagues", "STRING", leagues),
         ]
     )
@@ -129,7 +159,11 @@ def main() -> None:
     )
     parser.add_argument("--leagues", default=",".join(BIG5))
     parser.add_argument("--season", type=int, default=None, help="Por defecto, la última con Understat")
-    parser.add_argument("--dataset", default="marts")
+    parser.add_argument(
+        "--dataset",
+        default=f"{os.getenv('DBT_DEV_DATASET', 'dev')}_intermediate",
+        help="Dataset con int_us_player_season e int_ss_player_season (prod: intermediate)",
+    )
     parser.add_argument("--json", default=None, help="Guardar los resultados en JSON")
     args = parser.parse_args()
 
@@ -139,9 +173,7 @@ def main() -> None:
         row = next(
             iter(
                 client.query(
-                    f"select max(season) season from "
-                    f"`{client.project}.{args.dataset}.mart_current_player_season` "
-                    "where xg_source = 'understat'"
+                    f"select max(season) season from `{client.project}.{args.dataset}.int_us_player_season`"
                 ).result()
             )
         )

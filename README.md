@@ -186,13 +186,15 @@ Cada corrida guarda filas, bytes y tiempos por tabla en `ops.pipeline_runs`, y e
 de dbt en `ops.dbt_results`. `make metrics` las imprime listas para pegar acá.
 
 Primera carga completa en GCP (22/10/2026): Transfermarkt, StatsBomb (alcance `core`), Understat y SofaScore
-Argentina, más el modelo de valor de mercado entrenado en local con scikit-learn.
+Argentina, más el modelo de valor de mercado entrenado en local con scikit-learn. El 23/10/2026 se sumaron
+las 5 grandes 2026/27 con SofaScore en modo `full` (2.141 jugadores) para la comparación de modelos de xG.
 
 | Métrica | Valor |
 |---|---|
-| Filas cargadas por fuente | Transfermarkt: 50.149 jugadores, 1,89 M apariciones, 656.301 valuaciones y 175.165 transferencias. StatsBomb: 348 partidos y 1,24 M eventos. Understat 2026/27: 2.210 jugadores en 5 ligas. SofaScore: 839 jugadores de la Liga Profesional 2026 |
+| Filas cargadas por fuente | Transfermarkt: 50.149 jugadores, 1,89 M apariciones, 656.301 valuaciones y 175.165 transferencias. StatsBomb: 348 partidos y 1,24 M eventos. Understat 2026/27: 2.210 jugadores en 5 ligas. SofaScore: 2.980 jugadores (839 de Argentina y 2.141 de las 5 grandes 2026/27) |
 | Volumen | 160 MB en GCS y 1,4 GB en BigQuery |
 | Duración de `dbt build` (sin ML ni temporada actual) | ~3 min (173 nodos) |
+| Carga SofaScore 5 grandes (`full`) | 2.141 jugadores en ~3 h, una liga por proceso y 4 s entre requests |
 | Data tests | Build principal: 120 pasan y 4 avisos. Temporada actual: 42 pasan y 1 aviso (los 86 jugadores de SofaScore que patearon sin xG). Ningún error |
 | Jugadores cruzados StatsBomb → Transfermarkt | 2.551 de 3.080 (82,8 %): 2.218 nombre + nacionalidad, 167 palabras contenidas, 116 solo nombre, 49 nombre completo, 1 manual |
 | Modelo ML: R² / MAE (log del valor) | R² 0,83, MAE 0,46 y error mediano 0,37 sobre 10.072 filas de evaluación (≈ ×1,6 de error típico en el valor). Leyó 54.463 temporadas-jugador y entrenó con 40.285 en 43 s; predice 4.106 jugadores de 2025 |
@@ -203,7 +205,7 @@ Argentina, más el modelo de valor de mercado entrenado en local con scikit-lear
 | Qué | Dónde | Cuándo |
 |---|---|---|
 | Lint y formato (ruff) | `ingestion/`, `dags/`, `tests/`, `scripts/` | CI |
-| 47 tests unitarios de Python (plan incremental, manifests, esquemas, métricas, Understat y SofaScore) | `tests/` | CI |
+| 75 tests unitarios de Python (plan incremental, manifests, esquemas, métricas, Understat y SofaScore) | `tests/` | CI |
 | `dbt parse` (SQL, refs, YAML) | `dbt/` | CI |
 | Smoke test de punta a punta con partidos reales | `tests/smoke/` | CI |
 | `dag.test()` del DAG en 4 escenarios (las dos fuentes, una, la otra, ninguna) | `tests/dags/` | CI |
@@ -237,8 +239,8 @@ Argentina, más el modelo de valor de mercado entrenado en local con scikit-lear
 - **Understat:** no es una API oficial; el pipeline usa el mismo JSON que pide su web. No cubre Argentina y sus
   números pueden cambiar cuando corrige partidos. Es la fuente automática de xG de las 5 grandes.
 - **SofaScore:** no tiene API pública. La ingesta es opcional, local, manual y de bajo volumen: no se ejecuta en Airflow ni se publica el raw. Si no se
-  corre, no hay filas de Argentina en `mart_current_player_season`. Más detalles en
-  [`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
+  corre, no hay filas de Argentina en `mart_current_player_season` (ni de las 5 grandes cuando se usa como respaldo).
+  Más detalles en [`docs/runbooks/xg-manual-fallback.md`](docs/runbooks/xg-manual-fallback.md).
 - **No se mezclan fuentes de xG.** Understat y SofaScore usan modelos distintos; cada fila de
   `mart_current_player_season` lleva `xg_source`. El respaldo de las 5 grandes es manual, nunca automático.
 - **Cuánto se separan dos modelos de xG, medido.** Understat contra StatsBomb, mismos jugadores, temporada
@@ -254,6 +256,23 @@ Argentina, más el modelo de valor de mercado entrenado en local con scikit-lear
   Los cruzados cubren el 97-98 % del xG de StatsBomb de cada liga. El orden de los jugadores casi no cambia
   (correlación ≥ 0,99), pero Understat da entre 2 % y 9 % más xG y uno de cada siete jugadores se mueve más de
   medio gol en la temporada. La Bundesliga queda afuera: StatsBomb trae solo 34 partidos de esa temporada.
+- **Understat contra SofaScore, temporada 2026/27.** Las 5 grandes cargadas con SofaScore en modo `full`
+  (2.141 jugadores, 23/10/2026) y el mismo cruce por nombre + equipo + liga, descartando ambiguos
+  (`scripts/compare_xg_current.py`):
+
+  | Liga | Jugadores cruzados | xG Understat | xG SofaScore | Diferencia | Correlación | Dif. media por jugador | Jugadores con > 0,5 xG | Cobertura del xG |
+  |---|---|---|---|---|---|---|---|---|
+  | Premier League | 437 | 228,0 | 207,8 | −8,9 % | 0,974 | 0,107 | 4,6 % | 98,5 / 99,1 % |
+  | La Liga | 450 | 275,9 | 254,5 | −7,7 % | 0,984 | 0,111 | 4,2 % | 96,4 / 96,4 % |
+  | Serie A | 446 | 233,7 | 210,5 | −10,0 % | 0,972 | 0,111 | 3,6 % | 96,2 / 97,0 % |
+  | Bundesliga | 381 | 210,0 | 193,8 | −7,7 % | 0,969 | 0,116 | 4,5 % | 98,3 / 98,6 % |
+  | Ligue 1 | 385 | 208,7 | 203,9 | −2,3 % | 0,982 | 0,094 | 2,3 % | 96,4 / 96,9 % |
+
+  SofaScore da entre 2 % y 10 % **menos** xG que Understat, al revés que StatsBomb. El orden de los jugadores
+  casi no cambia (correlación ≥ 0,97) y la diferencia media ronda 0,1 xG por jugador: el respaldo manual no
+  cambia las conclusiones de scouting, pero sí los totales de xG de una liga. La cobertura es 96-99 % del xG
+  de cada fuente; lo que falta son nombres que no están en el plantel de SofaScore o que no se pueden cruzar
+  sin ambigüedad (se descartan en vez de cruzar mal).
 - Las métricas cada 90 de jugadores con pocos minutos no son confiables: filtrá por minutos.
 - Simplificación: las temporadas de Transfermarkt se cierran el 30 de junio; en ligas de calendario anual (como la
   argentina) eso corre la ventana medio año.

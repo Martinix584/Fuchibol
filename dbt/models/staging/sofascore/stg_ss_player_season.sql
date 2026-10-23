@@ -24,7 +24,21 @@ select
     cast(league_name as string) as league_name,
     safe_cast(season_id as int64) as season_id,
     cast(season_name as string) as season_name,
-    safe_cast(season_year as int64) as season_year,
+    -- SofaScore manda `year` como "26/27" en las ligas europeas y "2026" en Argentina.
+    -- El cast directo dejaba null las europeas; para el raw ya cargado se deduce del
+    -- nombre ("Premier League 26/27").
+    case
+        when safe_cast(season_year as int64) is not null then safe_cast(season_year as int64)
+        when regexp_contains(season_name, r'(?:19|20)\d{2}') then
+            safe_cast(regexp_extract(season_name, r'((?:19|20)\d{2})') as int64)
+        when regexp_contains(season_name, r'\d{2}\s*/\s*\d{2}') then
+            safe_cast(regexp_extract(season_name, r'(\d{2})\s*/') as int64)
+            + if(
+                safe_cast(regexp_extract(season_name, r'(\d{2})\s*/') as int64) >= 50,
+                1900,
+                2000
+            )
+    end as season_year,
     safe_cast(player_id as int64) as player_id,
     cast(player_name as string) as player_name,
     safe_cast(team_id as int64) as team_id,

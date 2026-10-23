@@ -19,6 +19,9 @@ models:
     columns:
       - name: player_id
         data_tests: [not_null]
+      - name: season_year
+        description: Año de inicio de la temporada; se deduce de `season_name` si SofaScore manda "26/27".
+        data_tests: [not_null]
       - name: minutes
         data_tests: [non_negative]
       - name: xg
