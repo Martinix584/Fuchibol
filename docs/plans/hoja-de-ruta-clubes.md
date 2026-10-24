@@ -2,7 +2,7 @@
 
 > **Avance (23/10/2026):** etapas 1 y 2 implementadas, 7.1 y 7.2 medidas (ver criterios al final). Modelo de valor
 > entrenado en local con scikit-learn (R² 0,83; la idea era BigQuery ML, pero no valía la pena acá). Pendiente:
-> etapa 3 (Power BI, app, SkillCorner) y etapa 4.
+> etapa 3 (Power BI, SkillCorner; la app ya está publicada) y etapa 4.
 >
 > Plan a futuro. Está pensado para leerse de punta a punta antes de tocar
 > código. Las decisiones de la sección 2 ya se discutieron con el usuario: no rediscutirlas.
