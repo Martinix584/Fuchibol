@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml/badge.svg)](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml)
 
+**App:** <https://fuchibol-jqccimrmzhgzszr5ihoymg.streamlit.app/> (radar de jugadores, subvaluados, fichajes y mapa de tiros)
+
 Pipeline de datos de fútbol de punta a punta: **Python → GCS → BigQuery → dbt → scikit-learn → Airflow → Power BI**,
 con cuatro fuentes:
 

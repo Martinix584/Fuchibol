@@ -197,7 +197,7 @@ diferencia en vez de suponerla.
 - [x] `xt_added_per_90`, `position_group`, métricas PAdj y percentiles en los marts, con tests de dbt.
 - [x] Smoke en verde después de cada etapa (CI corre al pushear).
 - [ ] Capturas de Power BI y del linaje en el README, tomadas después de la etapa 2.
-- [ ] App pública con datos reales y link en el README.
+- [x] App pública con datos reales y link en el README (Streamlit Community Cloud, 23/10/2026). Falta mejorarle el diseño.
 - [x] SofaScore Argentina cargado y en `mart_current_player_season` (22/10/2026).
 - [x] xG = 0 para jugadores de SofaScore sin tiros; test de aviso para los que tienen tiros y no xG.
 - [x] Percentiles por posición de la temporada actual (Argentina y 5 grandes, por fuente).
