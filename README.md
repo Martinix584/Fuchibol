@@ -2,14 +2,16 @@
 
 [![CI](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml/badge.svg)](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml)
 
-**App:** <https://fuchibol-jqccimrmzhgzszr5ihoymg.streamlit.app/> (radar de jugadores, subvaluados, fichajes, mapa de
+**App:** <https://fuchibol-861967550352.us-central1.run.app/> (radar de jugadores, subvaluados, fichajes, mapa de
 tiros y **chat con un agente de IA**)
 
 ## 💬 Probá el chat: agente de IA con SQL + RAG
 
 > ### 🔑 Código de acceso: `6796-57a7-85bf`
 >
-> Entrá a la [app](https://fuchibol-jqccimrmzhgzszr5ihoymg.streamlit.app/), abrí la pestaña **Chat** y pegá el código.
+> Entrá a la [app](https://fuchibol-861967550352.us-central1.run.app/), abrí la pestaña **Chat** y pegá el código.
+>
+> Si nadie la usó en un rato, la primera carga tarda unos segundos en despertar (Cloud Run, escala a cero).
 
 Preguntas para arrancar:
 

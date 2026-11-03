@@ -21,20 +21,13 @@ make app              # http://localhost:8501
 
 ## Publicarla
 
-Streamlit necesita un servidor Python, así que **no corre en Vercel** tal cual. Dos caminos:
+Está en **Cloud Run** (https://fuchibol-861967550352.us-central1.run.app): `python deploy/publicar.py` arma la
+imagen con Docker local, la sube a Artifact Registry y despliega con la cuenta de servicio `fuchibol-app` (sin
+clave JSON) y el código del chat de `.streamlit/secrets.toml`. Escala a cero (gratis, con arranque en frío) y a
+lo sumo una instancia (tope de costo).
 
-1. **Streamlit Community Cloud (recomendado, gratis):**
-   - `make export-parquet` y commitear `data/parquet/` (7,7 MB; está versionado a propósito
-     porque Streamlit lee los datos del repo).
-   - En <https://share.streamlit.io>: New app → repo → branch `main` → main file
-     `app/streamlit_app.py`; en Advanced settings, Python 3.12 o 3.13.
-   - Streamlit usa `app/requirements.txt`, que tiene prioridad sobre el `requirements.txt`
-     de la raíz (ese es de la ingesta).
-   - Para usar tu dominio de Vercel, dejá un proyecto chico que redirija a la URL de
-     Streamlit (`vercel.json` con un redirect); el DNS de Vercel no puede apuntar directo
-     a Streamlit.
-2. **Todo en Vercel:** requiere reescribir la app como sitio estático (Evidence.dev o
-   Next.js + DuckDB-WASM). Es otro proyecto, no un deploy.
+Streamlit Community Cloud quedó chico: con su CPU mínima, cargar LangChain al abrir el chat trababa el servidor
+y el navegador no llegaba a bajar los JS de la página.
 
 `make export-parquet` lee `dev_marts` y `dev_ml` (o los datasets que le pases con
 `--datasets`) y escribe en `data/parquet/marts` y `data/parquet/ml`, que es lo que espera

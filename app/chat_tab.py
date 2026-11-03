@@ -1,6 +1,7 @@
 """Pestaña Chat: el agente (app/agente.py) con código de acceso y memoria por nombre.
 
-Secrets (Streamlit Cloud → Settings → Secrets, o .streamlit/secrets.toml en local):
+Secrets (Streamlit Cloud → Settings → Secrets, .streamlit/secrets.toml en local, o variables de entorno
+CHAT_CODIGO / MEM0_API_KEY / GCP_SERVICE_ACCOUNT (JSON) en Hugging Face Spaces):
     CHAT_CODIGO = "..."          # sin esto el chat queda cerrado
     MEM0_API_KEY = "..."         # opcional: memoria entre visitas
     [gcp_service_account]        # JSON de la cuenta de servicio fuchibol-app (en local alcanza con ADC)
@@ -26,10 +27,16 @@ EJEMPLOS = [
 
 
 def _secreto(clave: str):
+    """st.secrets (Streamlit Cloud, secrets.toml local) o variable de entorno (Hugging Face Spaces)."""
     try:
-        return st.secrets.get(clave)
-    except FileNotFoundError:  # sin secrets.toml en local
-        return None
+        if (v := st.secrets.get(clave)) is not None:
+            return v
+    except Exception:  # sin secrets.toml
+        pass
+    v = os.environ.get(clave.upper())
+    if v and clave == "gcp_service_account":
+        return json.loads(v)  # en HF va como JSON en GCP_SERVICE_ACCOUNT
+    return v
 
 
 def _credenciales() -> None:

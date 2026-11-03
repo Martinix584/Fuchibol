@@ -27,3 +27,13 @@ def test_codigo_correcto_abre_el_chat():
     at.text_input[0].input("secreto").run()
     assert not at.exception
     assert at.chat_input
+
+
+def test_secretos_por_variable_de_entorno(monkeypatch):
+    from app import chat_tab
+
+    monkeypatch.setenv("CHAT_CODIGO", "xyz")
+    monkeypatch.setenv("GCP_SERVICE_ACCOUNT", '{"type": "service_account"}')
+    monkeypatch.setattr(chat_tab.st, "secrets", {})
+    assert chat_tab._secreto("CHAT_CODIGO") == "xyz"
+    assert chat_tab._secreto("gcp_service_account") == {"type": "service_account"}
