@@ -1,0 +1,7 @@
+# En Streamlit Cloud el contenedor tiene muy poca CPU: nada de vigilar archivos ni telemetría.
+[server]
+fileWatcherType = "none"
+runOnSave = false
+
+[browser]
+gatherUsageStats = false

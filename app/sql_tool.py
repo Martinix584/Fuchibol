@@ -49,9 +49,12 @@ def _parquets() -> list[Path]:
 
 
 def conectar() -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect()
+    # Vistas sobre los Parquet, no tablas copiadas: copiar todo costaba ~185 MB de RAM, y Streamlit Cloud
+    # tiene poca. Para que las vistas puedan leer, solo se habilita la carpeta de datos.
+    con = duckdb.connect(config={"memory_limit": "256MB", "threads": 1})
     for p in _parquets():
-        con.execute(f"create table {p.stem} as select * from read_parquet('{p.as_posix()}')")
+        con.execute(f"create view {p.stem} as select * from read_parquet('{p.as_posix()}')")
+    con.execute(f"set allowed_directories = ['{DATA.as_posix()}/']")
     con.execute("set enable_external_access = false")
     con.execute("set lock_configuration = true")
     return con
