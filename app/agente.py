@@ -1,6 +1,6 @@
 """Agente de Fuchibol: Gemini 3.8 Flash (Vertex) + SQL sobre los marts + RAG sobre Wikipedia.
 
-    python -m app.agente "¿quién está más subvaluado en la Liga Argentina?"
+python -m app.agente "¿quién está más subvaluado en la Liga Argentina?"
 """
 
 from __future__ import annotations
@@ -51,6 +51,7 @@ def tomar_cupo(hoy: dt.date | None = None) -> int:
             raise SinCupo("Se terminó el cupo de preguntas de hoy. Volvé mañana.")
         _cupo["usadas"] += 1
         return MAX_PREGUNTAS_DIA - _cupo["usadas"]
+
 
 PROMPT = """Sos el analista de datos de Fuchibol. Respondés en castellano rioplatense, corto y concreto.
 

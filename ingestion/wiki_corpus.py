@@ -36,8 +36,17 @@ TORNEOS = [
     "Final de la Copa Mundial de Fútbol de 2022",
 ]
 SECCIONES_FUERA = {
-    "referencias", "enlaces externos", "bibliografía", "véase también", "notas", "notas y referencias",
-    "fuentes", "galería", "galería de imágenes", "lectura adicional", "estadísticas",
+    "referencias",
+    "enlaces externos",
+    "bibliografía",
+    "véase también",
+    "notas",
+    "notas y referencias",
+    "fuentes",
+    "galería",
+    "galería de imágenes",
+    "lectura adicional",
+    "estadísticas",
 }
 MAX_CHARS = 1500
 MAX_POR_ARTICULO = 40_000
@@ -92,10 +101,18 @@ def titulos_por_tm(ids: list[int], prop: str) -> dict[int, str]:
 
 
 def texto(titulo: str) -> tuple[str, str] | None:
-    d = _get(WIKI, {
-        "action": "query", "prop": "extracts", "explaintext": 1, "redirects": 1,
-        "titles": titulo, "format": "json", "formatversion": 2,
-    })
+    d = _get(
+        WIKI,
+        {
+            "action": "query",
+            "prop": "extracts",
+            "explaintext": 1,
+            "redirects": 1,
+            "titles": titulo,
+            "format": "json",
+            "formatversion": 2,
+        },
+    )
     pag = d["query"]["pages"][0]
     if pag.get("missing") or not pag.get("extract"):
         return None
@@ -152,12 +169,18 @@ def main() -> None:
         titulo, ext = r
         url = "https://es.wikipedia.org/wiki/" + titulo.replace(" ", "_")
         for k, (sec, t) in enumerate(fragmentos(ext)):
-            filas.append({
-                "chunk_id": f"{titulo}#{k}", "title": titulo, "section": sec, "url": url, "text": t,
-                "entity_type": tipo,
-                "player_id": tm_id if tipo == "player" else None,
-                "club_id": tm_id if tipo == "club" else None,
-            })
+            filas.append(
+                {
+                    "chunk_id": f"{titulo}#{k}",
+                    "title": titulo,
+                    "section": sec,
+                    "url": url,
+                    "text": t,
+                    "entity_type": tipo,
+                    "player_id": tm_id if tipo == "player" else None,
+                    "club_id": tm_id if tipo == "club" else None,
+                }
+            )
         if n % 100 == 0:
             log.info("%d/%d artículos, %d fragmentos", n, len(articulos), len(filas))
         time.sleep(0.2)

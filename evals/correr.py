@@ -1,6 +1,6 @@
 """Evals del agente, sin framework: ruteo de tools, valor correcto y artículo recuperado.
 
-    python -m evals.correr            # todas las preguntas -> evals/resultados.json
+python -m evals.correr            # todas las preguntas -> evals/resultados.json
 """
 
 from __future__ import annotations
@@ -65,8 +65,13 @@ def correr_una(q: dict, con) -> dict:
             except (json.JSONDecodeError, TypeError):
                 pass
     respuesta = msgs[-1].text
-    r = {"pregunta": q["pregunta"], "tipo": q["tipo"], "tools": sorted(usadas), "respuesta": respuesta,
-         "tool_ok": TOOLS[q["tipo"]] <= usadas}
+    r = {
+        "pregunta": q["pregunta"],
+        "tipo": q["tipo"],
+        "tools": sorted(usadas),
+        "respuesta": respuesta,
+        "tool_ok": TOOLS[q["tipo"]] <= usadas,
+    }
     if "verdad" in q:
         esperado = con.execute(q["verdad"]).fetchone()[0]
         r["esperado"] = esperado

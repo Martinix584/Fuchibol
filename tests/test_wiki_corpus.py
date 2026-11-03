@@ -1,16 +1,20 @@
 from ingestion.wiki_corpus import MAX_CHARS, fragmentos
 
-EXTRACTO = """Lionel Messi es un futbolista argentino que juega como delantero en el Inter Miami de la MLS.
+EXTRACTO = (
+    """Lionel Messi es un futbolista argentino que juega como delantero en el Inter Miami de la MLS.
 
 == Trayectoria ==
 === Barcelona ===
-""" + ("Debutó en el primer equipo del Barcelona en 2004 y ganó todo lo que había para ganar. " * 40) + """
+"""
+    + ("Debutó en el primer equipo del Barcelona en 2004 y ganó todo lo que había para ganar. " * 40)
+    + """
 === Paris Saint-Germain ===
 Llegó al PSG en 2021 tras la salida del Barcelona por problemas económicos del club catalán.
 
 == Referencias ==
 Esto no tiene que aparecer en ningún fragmento porque son solo referencias bibliográficas.
 """
+)
 
 
 def test_fragmentos():
