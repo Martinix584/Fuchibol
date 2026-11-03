@@ -1,0 +1,100 @@
+# tipo: sql (la respuesta tiene que contener el primer valor de `verdad`), rag (entre los artículos
+# recuperados tiene que estar `articulo`) o mixto (las dos cosas).
+- pregunta: ¿Cuál es el jugador con mayor valor de mercado hoy según Transfermarkt?
+  tipo: sql
+  verdad: select player_name from dim_players order by market_value_eur desc nulls last limit 1
+- pregunta: ¿Quién es el jugador más subvaluado según el modelo?
+  tipo: sql
+  verdad: select player_name from mart_undervalued_players order by undervalued_rank limit 1
+- pregunta: ¿Qué club tiene el mayor gasto total en fichajes?
+  tipo: sql
+  verdad: select club_name from mart_club_transfer_balance order by spent_eur desc limit 1
+- pregunta: ¿Qué club tiene el mejor balance neto de transferencias (lo que vendió menos lo que gastó)?
+  tipo: sql
+  verdad: select club_name from mart_club_transfer_balance order by net_balance_eur desc limit 1
+- pregunta: ¿Cuál fue el fichaje más caro de la historia en los datos?
+  tipo: sql
+  verdad: select player_name from mart_transfer_roi order by transfer_fee_eur desc nulls last limit 1
+- pregunta: ¿Cuál fue la venta más cara de un jugador desde la liga argentina?
+  tipo: sql
+  verdad: select player_name from mart_argentina_exports order by transfer_fee_eur desc nulls last limit 1
+- pregunta: ¿Quién lidera la Premier League en la temporada actual por puntos?
+  tipo: sql
+  verdad: select team_name from mart_current_team_table where league_code = 'EPL' order by points desc limit 1
+- pregunta: ¿Qué equipo de La Liga de esta temporada tiene más puntos por encima de lo esperado (xPts)?
+  tipo: sql
+  verdad: >-
+    select team_name from mart_current_team_table where league_code = 'La_liga'
+    order by points_minus_xpts desc limit 1
+- pregunta: ¿Quién tiene más xG en la Serie A esta temporada?
+  tipo: sql
+  verdad: >-
+    select player_name from mart_current_player_season where league_code = 'Serie_A'
+    order by xg desc limit 1
+- pregunta: En el Mundial 2022, ¿qué jugador tuvo más npxG según StatsBomb?
+  tipo: sql
+  verdad: >-
+    select player_name from mart_sb_player_seasons where competition_name = 'FIFA World Cup'
+    and season_name = '2022' order by npxg desc limit 1
+- pregunta: ¿Qué selección tuvo más xG a favor en la Eurocopa 2024?
+  tipo: sql
+  verdad: >-
+    select team_name from mart_sb_team_seasons where competition_name = 'UEFA Euro'
+    and season_name = '2024' order by xg_for desc limit 1
+  acepta: [España]
+- pregunta: ¿Cuántos goles hizo el Bayer Leverkusen en la Bundesliga 2023/24 según StatsBomb?
+  tipo: sql
+  verdad: >-
+    select goals_for from mart_sb_team_seasons where competition_name = '1. Bundesliga'
+    and season_name = '2023/2024' and team_name ilike '%Leverkusen%'
+- pregunta: ¿Cuántos tiros pateó Argentina en la final del Mundial 2022?
+  tipo: sql
+  verdad: >-
+    select count(*) from fct_sb_shots s join fct_sb_team_matches m using (match_id, team_id)
+    where m.competition_name = 'FIFA World Cup' and m.match_date = '2022-12-18' and s.team_name = 'Argentina'
+- pregunta: ¿Por qué se fue Julián Álvarez del Manchester City?
+  tipo: rag
+  articulo: Julián Alvarez
+- pregunta: ¿Cómo se definió la final del Mundial 2022?
+  tipo: rag
+  articulo: Final de la Copa Mundial de Fútbol de 2022
+- pregunta: ¿Cuál es la historia de la Bombonera?
+  tipo: rag
+  articulo: Club Atlético Boca Juniors
+- pregunta: ¿Cuándo se fundó River Plate?
+  tipo: rag
+  articulo: Club Atlético River Plate
+- pregunta: ¿Qué pasó en la Copa América 2024?
+  tipo: rag
+  articulo: Copa América 2024
+- pregunta: ¿Cómo fue la salida de Messi del Barcelona?
+  tipo: rag
+  articulo: Lionel Messi
+- pregunta: ¿Quién ganó la Eurocopa 2024 y cómo fue el torneo?
+  tipo: rag
+  articulo: Eurocopa 2024
+- pregunta: ¿Qué títulos ganó el Real Madrid en su historia reciente?
+  tipo: rag
+  articulo: Real Madrid Club de Fútbol
+- pregunta: ¿Cuánto vale hoy Julián Álvarez y por qué se fue del City?
+  tipo: mixto
+  verdad: select market_value_eur from dim_players where player_id = 576024
+  articulo: Julián Alvarez
+- pregunta: ¿Cuánto vale hoy Lamine Yamal y cómo llegó al primer equipo del Barcelona?
+  tipo: mixto
+  verdad: >-
+    select market_value_eur from dim_players where player_name = 'Lamine Yamal'
+  articulo: Lamine Yamal
+- pregunta: ¿Argentina ganó la final del Mundial 2022 por suerte o por juego? Usá el xG y el relato.
+  tipo: mixto
+  verdad: >-
+    select round(sum(case when is_penalty then 0 else xg end), 2) from fct_sb_shots s
+    join fct_sb_team_matches m using (match_id, team_id) where m.competition_name = 'FIFA World Cup'
+    and m.match_date = '2022-12-18' and s.team_name = 'Argentina' and s.period <= 4
+  articulo: Final de la Copa Mundial de Fútbol de 2022
+- pregunta: ¿Quién es el jugador más caro de la Premier y qué se sabe de su carrera?
+  tipo: mixto
+  verdad: >-
+    select p.player_name from dim_players p join dim_clubs c on c.club_id = p.current_club_id
+    where c.domestic_competition_id = 'GB1' order by p.market_value_eur desc nulls last limit 1
+  articulo: Erling Haaland

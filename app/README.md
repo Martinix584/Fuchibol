@@ -15,6 +15,9 @@ make app              # http://localhost:8501
 - **Subvaluados**: ranking del modelo, real vs. predicho, R²/MAE e importancia de variables.
 - **Fichajes**: costo vs. valor un año después, veredicto y balance por club.
 - **Mapa de tiros**: tiros de StatsBomb sobre la cancha, tamaño = xG.
+- **Chat**: agente (Gemini 3.8 Flash en Vertex, LangChain) con dos tools: SQL de solo lectura sobre estos
+  Parquet y RAG híbrido (BM25 + embeddings) sobre Wikipedia en español, más memoria con Mem0. Pide código de
+  acceso y tiene cupo diario. Secrets: ver el docstring de `app/chat_tab.py`.
 
 ## Publicarla
 

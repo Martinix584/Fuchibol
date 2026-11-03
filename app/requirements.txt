@@ -3,3 +3,10 @@ plotly>=5.24
 duckdb>=1.1
 pandas>=2.2
 pyarrow>=17
+sqlglot==30.23.0  # fijado igual que en dev: el parseo depende de la versión
+pyyaml>=6
+rank_bm25>=0.2.2
+langchain==1.4.8
+langchain-google-genai==4.3.7
+google-genai>=1.66,<2
+mem0ai==2.2.1

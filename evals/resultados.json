@@ -1,0 +1,285 @@
+[
+ {
+  "pregunta": "¿Cuál es el jugador con mayor valor de mercado hoy según Transfermarkt?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "Según los datos de Transfermarkt en la tabla `dim_players`, hay un empate en el primer puesto:\n\n* **Lamine Yamal** (FC Barcelona): **€200.000.000**\n* **Erling Haaland** (Manchester City): **€200.000.000**\n\nInmediatamente atrás aparece **Kylian Mbappé** (Real Madrid) con **€180.000.000**.",
+  "tool_ok": true,
+  "esperado": "Lamine Yamal",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Quién es el jugador más subvaluado según el modelo?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "Según la tabla `mart_undervalued_players` (temporada 2025), depende de cómo lo mires:\n\n1. **Por ranking del modelo (mayor ratio predicho vs. real, `undervalued_rank = 1`):**  \n   **Fabricio Pedrozo** (APO Levadiakos).  \n   - **Valor real:** €150.000  \n   - **Valor predicho:** €1.295.268  \n   - **Ratio:** 8,64x (brecha de €1.145.268)\n\n2. **Por mayor diferencia absoluta de dinero (`value_gap_eur`):**  \n   **Lennart Karl** (Bayern Munich).  \n   - **Valor real:** €60.000.000  \n   - **Valor predicho:** €109.745.324  \n   - **Brecha a favor:** +€49.745.324 (ratio de 1,83x, puesto 653 en el ranking general)",
+  "tool_ok": true,
+  "esperado": "Fabricio Pedrozo",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Qué club tiene el mayor gasto total en fichajes?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "El club con el mayor gasto total en fichajes es el **Chelsea FC**, con un gasto acumulado de **€3.005.150.000** (más de 3.005 millones de euros) en 94 incorporaciones registradas.\n\nLe siguen en el podio el Manchester City (€2.478.430.000) y el Manchester United (€2.383.150.000).\n\n*(Fuente: `mart_club_transfer_balance`)*",
+  "tool_ok": true,
+  "esperado": "Chelsea FC",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Qué club tiene el mejor balance neto de transferencias (lo que vendió menos lo que gastó)?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "El club con mejor balance neto es el **SL Benfica**, con un saldo positivo de **€733.490.000**.\n\nLos números de su mercado:\n- **Ingresos por ventas:** €1.546.940.000 (93 ventas)\n- **Gasto en fichajes:** €813.450.000 (86 incorporaciones)\n- **Balance neto:** +€733.490.000\n\nEl podio lo completan el **Ajax** (+€588.690.000) y el **Sporting CP** (+€457.228.000).\n\n*Fuente: `mart_club_transfer_balance` (Transfermarkt).*",
+  "tool_ok": true,
+  "esperado": "SL Benfica",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Cuál fue el fichaje más caro de la historia en los datos?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "El fichaje más caro registrado en los datos es el pase de **Neymar** del **Barcelona** al **PSG** en agosto de 2017, por un monto de **€222.000.000**.\n\n*(Fuente: `mart_transfer_roi`)*",
+  "tool_ok": true,
+  "esperado": "Neymar",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Cuál fue la venta más cara de un jugador desde la liga argentina?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "Según los datos de **`mart_argentina_exports`** (Transfermarkt), la venta más cara registrada es la de **Franco Mastantuono** de **River Plate** al **Real Madrid** por **45.000.000 €** (fecha registrada: 14/08/2025).\n\nApenas por detrás figura la de **Enzo Fernández** de **River Plate** al **Benfica** (julio de 2022) por un total de **44.250.000 €** (computando la venta inicial más los ingresos por plusvalía). Completa el podio **Lautaro Martínez**, vendido de **Racing Club** al **Inter de Milán** en 2018 por **25.000.000 €**.",
+  "tool_ok": true,
+  "esperado": "Franco Mastantuono",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Quién lidera la Premier League en la temporada actual por puntos?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "El puntero de la Premier League en la temporada actual es el **Manchester City**, con **21 puntos** en 7 partidos jugados (puntaje ideal: 7 victorias, 19 goles a favor y 7 en contra). Lo sigue el Arsenal con 18 unidades.\n\n*(Fuente: `mart_current_team_table`)*",
+  "tool_ok": true,
+  "esperado": "Manchester City",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Qué equipo de La Liga de esta temporada tiene más puntos por encima de lo esperado (xPts)?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "El equipo de La Liga con mayor sobre-rendimiento de puntos respecto a lo esperado esta temporada es el **Real Betis**.\n\n- **Puntos reales:** 19\n- **Puntos esperados (xPts):** 12,52\n- **Diferencia:** +6,48 puntos por encima de lo esperado (en 9 partidos)\n\nLe siguen la Real Sociedad (+5,56) y el Atlético de Madrid (+4,72).\n\n*Fuente: `mart_current_team_table`.*",
+  "tool_ok": true,
+  "esperado": "Real Betis",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Quién tiene más xG en la Serie A esta temporada?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "En la temporada actual de la Serie A, el líder en goles esperados es **Donyell Malen** (Roma) con **6,41 xG** en 6 partidos (407 minutos jugados y 6 goles convertidos). \n\nEl podio lo completan:\n2. **Lautaro Martínez** (Inter): **5,35 xG** (4 goles en 5 partidos).\n3. **Antonio Raimondo** (Frosinone): **5,15 xG** (7 goles en 7 partidos).\n\n*(Fuente: tabla `mart_current_player_season`, datos de Understat).*",
+  "tool_ok": true,
+  "esperado": "Donyell Malen",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "En el Mundial 2022, ¿qué jugador tuvo más npxG según StatsBomb?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "En el Mundial 2022, el jugador con más npxG (goles esperados sin contar penales) fue **Olivier Giroud** (Francia), con **3,04 npxG** en 452 minutos jugados (marcó 4 goles).\n\nEl top 3 lo completaron:\n1. **Olivier Giroud** (Francia): 3,04 npxG (4 goles)\n2. **Kylian Mbappé** (Francia): 2,67 npxG (6 goles sin penal de sus 8 totales)\n3. **Breel Embolo** (Suiza): 2,39 npxG (2 goles)\n\n*(Fuente: `mart_sb_player_seasons`, datos de StatsBomb)*",
+  "tool_ok": true,
+  "esperado": "Olivier Giroud",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Qué selección tuvo más xG a favor en la Eurocopa 2024?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "La selección con más xG a favor en la Eurocopa 2024 fue **España**, con **10,57 xG** en 7 partidos (terminó metiendo 15 goles).\n\nEl top 3 del torneo:\n1. **España**: 10,57 xG (15 goles, 7 PJ)\n2. **Portugal**: 9,22 xG (5 goles, 5 PJ)\n3. **Alemania**: 8,73 xG (11 goles, 5 PJ)\n\n*Fuente: mart_sb_team_seasons (StatsBomb).*",
+  "tool_ok": true,
+  "esperado": "Spain",
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Cuántos goles hizo el Bayer Leverkusen en la Bundesliga 2023/24 según StatsBomb?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "Según los datos de StatsBomb (`mart_sb_team_seasons`), el **Bayer Leverkusen** metió **89 goles** en 34 partidos en la Bundesliga 2023/24 (con un xG generado de **72,7**).",
+  "tool_ok": true,
+  "esperado": 89,
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Cuántos tiros pateó Argentina en la final del Mundial 2022?",
+  "tipo": "sql",
+  "tools": [
+   "consultar_stats"
+  ],
+  "respuesta": "En la final del Mundial 2022 contra Francia, Argentina pateó **20 tiros** (10 de ellos al arco), acumulando un xG de 2,76.\n\n*(Fuente: `fct_sb_team_matches` / `fct_sb_shots`, datos de StatsBomb)*",
+  "tool_ok": true,
+  "esperado": 20,
+  "valor_ok": true
+ },
+ {
+  "pregunta": "¿Por qué se fue Julián Álvarez del Manchester City?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "Julián se fue del Manchester City principalmente para buscar **mayor protagonismo y titularidad en los partidos clave**, donde solía quedar relegado al banco o fuera de su posición natural por la presencia de Erling Haaland. \n\nEl contexto y los números de su salida:\n\n* **Tensión por los minutos importantes:** Tras dos temporadas y cruces de declaraciones con Pep Guardiola sobre su rol en el equipo, el delantero decidió cambiar de aire tras los Juegos Olímpicos de París 2024 para ser la referencia indiscutida del ataque en el Atlético de Madrid (*Wikipedia: Julián Alvarez*). En el City cerró su ciclo con 103 partidos, 36 goles, 18 asistencias y 6 títulos (*Wikipedia: Julián Alvarez*).\n* **Cifras del traspaso:** La venta se cerró en agosto de 2024 por **75.000.000 €** fijos (más 20 millones en variables), convirtiéndose en la venta más cara en la historia del City (*mart_transfer_roi* y *Wikipedia: Julián Alvarez*). Al momento de la transferencia tenía una cotización de mercado de 90.000.000 € (*mart_transfer_roi*).\n* **Condiciones personales:** En el conjunto colchonero acordó un contrato por 5 años y retener el 100 % de sus derechos de imagen (contra el 75 % que tenía en Manchester) (*Wikipedia: Julián Alvarez*).",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Cómo se definió la final del Mundial 2022?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "La final del Mundial 2022 entre Argentina y Francia terminó **3-3** tras los 120 minutos reglamentarios y el alargue (*fct_sb_team_matches*):\n\n* **Argentina (3):** Lionel Messi (23' de penal y 108') y Ángel Di María (36') (*fct_sb_shots*).\n* **Francia (3):** Kylian Mbappé (80' de penal, 81' y 118' de penal) (*fct_sb_shots*).\n\nEl título se definió en la **tanda de penales**, donde **Argentina se impuso 4-2** (*Final de la Copa Mundial de Fútbol de 2022*, Wikipedia):\n\n* **Francia:** Convirtieron Mbappé y Kolo Muani; «Dibu» Martínez le atajó el remate a Kingsley Coman y Aurélien Tchouaméni tiró el suyo afuera.\n* **Argentina:** Efectividad perfecta (4 de 4) con goles de Lionel Messi, Paulo Dybala, Leandro Paredes y Gonzalo Montiel, quien metió el penal definitivo para consagrar a la Albiceleste campeona del mundo.",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Cuál es la historia de la Bombonera?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "La historia de **La Bombonera** (oficialmente **Estadio Alberto J. Armando**, según la tabla `dim_clubs`):\n\n* **Los orígenes:** Tras pasar por varias canchas en La Boca (y un breve destierro en Wilde en 1914), el club inauguró en 1924 su estadio de tablones en Brandsen y Del Crucero (hoy Del Valle Iberlucea). En 1938 se demolió para levantar la estructura definitiva, y mientras duró la obra, Boca hizo de local en Ferro (*Club Atlético Boca Juniors*, Wikipedia).\n* **Inauguración y arquitectura (1940):** Se inauguró el **25 de mayo de 1940**. El diseño estuvo a cargo del estudio **Delpini-Sulcic-Bes**. Por las limitaciones de espacio del terreno, diseñaron una solución ingeniosa y asimétrica: tres tribunas superpuestas en herradura y un cuarto lado prácticamente vertical, lo que le dio su acústica y esa forma de «caja de bombones» de donde nació el apodo (*Club Atlético Boca Juniors*, Wikipedia).\n* **Crisis y casi remate (1984):** Durante la severa crisis económica del club en los años 80, el estadio estuvo a punto de salir a remate judicial en diciembre de 1984, frenado a contrarreloj por la intervención judicial encabezada por Federico Polak (*Club Atlético Boca Juniors*, Wikipedia).\n* **Modernización (1996):** Bajo la presidencia de Mauricio Macri se demolieron los viejos palcos sobre la calle Del Valle Iberlucea y se levantó la estructura actual de palcos VIP y torres preferenciales (*Club Atlético Boca Juniors*, Wikipedia).",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Cuándo se fundó River Plate?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "El **Club Atlético River Plate** se fundó el **25 de mayo de 1901** en la ciudad de Buenos Aires, a partir de la fusión de dos clubes del barrio de La Boca: Santa Rosa y La Rosales.\n\n*Fuente: Wikipedia (artículo «Club Atlético River Plate»).*",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Qué pasó en la Copa América 2024?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "En la **Copa América 2024** disputada en Estados Unidos, **Argentina se consagró bicampeona** y alcanzó su 16.° título continental, quedando como la máxima ganadora histórica del torneo (*Copa América 2024*, Wikipedia).\n\nPuntos clave del torneo:\n\n* **La final:** Argentina venció 1-0 a Colombia en tiempo suplementario el 14 de julio en Miami, con gol de Lautaro Martínez a los 112' asistido por Giovani Lo Celso (`fct_sb_shots`).\n* **Campaña del campeón:** La Selección cerró invicta con 5 victorias y 1 empate (eliminó a Ecuador por penales en cuartos tras empatar 1-1), recibiendo apenas un gol en todo el certamen (9 goles a favor, 1 en contra) (`mart_sb_team_seasons`).\n* **Goleador:** Lautaro Martínez fue el máximo artillero con 5 tantos en solo 229 minutos disputados (`mart_sb_player_seasons`).\n* **Figura del torneo:** James Rodríguez lideró en creación con 6 asistencias y 20 pases clave (`mart_sb_player_seasons`), guiando a Colombia a la final tras eliminar a Uruguay en semifinales.\n* **El resto del podio:** Uruguay se quedó con el 3.° puesto al superar a Canadá por penales tras un 2-2 en los 90 minutos (`fct_sb_team_matches`).",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Cómo fue la salida de Messi del Barcelona?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "La salida de Lionel Messi del Barcelona en agosto de 2021 se dio de forma abrupta por problemas económicos e institucionales:\n\n1. **El motivo del adiós:** Según el artículo de Wikipedia *«Fútbol Club Barcelona»*, Messi había terminado su vínculo a fines de junio de 2021 y se fue a disputar la Copa América con la intención mutua de renovar. Sin embargo, la delicada situación financiera del club sumada al estricto límite salarial y las normas de *fair play* financiero de LaLiga hicieron imposible inscribir su nuevo contrato. El 5 de agosto el club anunció que no seguiría, cerrando su ciclo con una emotiva conferencia de prensa de despedida entre lágrimas antes de fichar libre por el Paris Saint-Germain.\n\n2. **Sus números en la despedida:** \n   - En toda su historia culé registró 778 partidos, 672 goles y 35 títulos oficiales (*Fútbol Club Barcelona*, Wikipedia).\n   - En su última temporada allí (2020/21), según la tabla `mart_player_seasons`, disputó 47 partidos (4.193 minutos), convirtió 38 goles y aportó 14 asistencias (un promedio de 1,12 contribuciones directas de gol cada 90 minutos). Al año siguiente (temporada 2021/22), ya en el PSG, sumó 33 partidos, 11 goles y 15 asistencias (`mart_player_seasons`).",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Quién ganó la Eurocopa 2024 y cómo fue el torneo?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "La **Eurocopa 2024** la ganó **España**, que se consagró campeona por cuarta vez en su historia (récord absoluto del certamen, según *Wikipedia: Eurocopa 2024*) tras vencer **2-1 a Inglaterra** en la final disputada el 14 de julio en el Estadio Olímpico de Berlín.\n\n### Cómo fue el torneo:\n- **Campaña perfecta de La Roja:** España ganó los **7 partidos** que disputó, con 15 goles a favor, 4 en contra, **10,57 xG a favor** y **6,45 xG en contra** (tabla `mart_sb_team_seasons`). En la final dominó el juego generando **1,79 xG frente a 0,73 xG** de los ingleses (`fct_sb_team_matches`).\n- **Figuras clave:** \n  - **Dani Olmo** fue uno de los goleadores del campeonato con **3 goles y 2 asistencias** en 6 partidos.\n  - **Lamine Yamal** fue el máximo asistidor del torneo con **4 asistencias** (además de 1 gol y 18 pases clave en 7 partidos), según `mart_sb_player_seasons`.\n- **Subcampeón:** Inglaterra llegó a su segunda final consecutiva con un rendimiento más ajustado: 3 victorias, 3 empates y 1 derrota, con 8 goles a favor y 6 en contra (`mart_sb_team_seasons`).",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Qué títulos ganó el Real Madrid en su historia reciente?",
+  "tipo": "rag",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "En su historia reciente (período 2014–2024), el Real Madrid protagonizó una de las etapas más ganadoras de su historia, marcada por la hegemonía continental y títulos locales:\n\n### Títulos internacionales\n* **UEFA Champions League (6):** \n  * 2013-14 (*La Décima*)\n  * 2015-16 (*La Undécima*)\n  * 2016-17 (*La Duodécima*, primer bicampeón en formato moderno)\n  * 2017-18 (*La Decimotercera*, tricampeonato al hilo)\n  * 2021-22 (*La Decimocuarta*)\n  * 2023-24 (*La Decimoquinta*)\n* **Copa Mundial de Clubes de la FIFA:** 2014, 2016, 2017, 2018 y 2022.\n* **Supercopa de la UEFA:** 2014, 2016, 2017, 2022 y 2024.\n\n### Títulos nacionales\n* **Primera División de España (LaLiga):** 2016-17, 2019-20, 2021-22 y 2023-24 (sumado al título de 2011-12 con Mourinho).\n* **Copa del Rey:** 2013-14 y 2022-23.\n* **Supercopa de España:** 2017, 2019-20, 2021-22 y 2023-24.\n\n---\n*(Fuentes: artículos de Wikipedia en español «Luka Modrić», «Nacho Fernández Iglesias», «Thibaut Courtois», «Marcelo Vieira» y «Cristiano Ronaldo»)*.",
+  "tool_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Cuánto vale hoy Julián Álvarez y por qué se fue del City?",
+  "tipo": "mixto",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "**Valor actual:**\nHoy Julián Álvarez tiene un valor de mercado de **100.000.000 €** en el Atlético de Madrid (tabla `dim_players`). \n\n**Por qué se fue del Manchester City:**\nBuscaba protagonismo absoluto y titularidad indiscutida. Según el artículo de Wikipedia *Julián Alvarez*, su salida se concretó tras dos meses de negociaciones y cruces de declaraciones con Pep Guardiola sobre su lugar y minutos en el equipo (especialmente en los partidos definitorios, donde solía quedar tapado por Erling Haaland). El pase al Atlético de Madrid en agosto de 2024 se cerró en **75.000.000 €** fijos (tabla `mart_transfer_roi`) más 20 millones en variables, convirtiéndose en la venta más cara de la historia del City.",
+  "tool_ok": true,
+  "esperado": 100000000,
+  "valor_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Cuánto vale hoy Lamine Yamal y cómo llegó al primer equipo del Barcelona?",
+  "tipo": "mixto",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "**Valor de mercado actual:**\nLamine Yamal está cotizado en **200.000.000 €** (según la tabla `dim_players`, con datos de Transfermarkt).\n\n**Cómo llegó a Primera:**\n* **Formación en La Masía:** Llegó al club a los seis años en febrero de 2014, ingresando al Prebenjamín. Fue quemando etapas a un ritmo demoledor, jugando siempre contra chicos más grandes (en la 2022-23 ya estaba en el Juvenil A siendo cadete).\n* **El ojo de Xavi:** En septiembre de 2022, Xavi Hernández lo llamó para entrenar con el plantel superior; le bastaron un par de prácticas para llamar la atención del cuerpo técnico sin haber firmado todavía contrato profesional.\n* **Debut récord:** Debutó oficialmente el 29 de abril de 2023 ante el Real Betis por LaLiga, entrando por Gavi a los 15 años y 290 días, lo que lo convirtió en el jugador más joven en debutar en el torneo con la camiseta del Barça (artículo de Wikipedia: *Lamine Yamal*).",
+  "tool_ok": true,
+  "esperado": 200000000,
+  "valor_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Argentina ganó la final del Mundial 2022 por suerte o por juego? Usá el xG y el relato.",
+  "tipo": "mixto",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "**Por juego, y de forma abrumadora.** Los números marcan que si hubo algo de azar o milagro en el desarrollo, fue que Francia haya llegado a los penales.\n\n### Lo que dicen los datos (`fct_sb_team_matches`, `fct_sb_shots`):\n* **xG total:** Argentina **2.76** vs. Francia **2.27**.\n* **xG sin penales (npxG):** La diferencia real en jugada armada fue abismal: Argentina generó **1.98 npxG** contra apenas **0.71 npxG** de Francia. De los 2.27 de Francia, **1.57 xG** vinieron de los dos penales que convirtió Mbappé.\n* **Volumen:** Argentina pateó **20 veces (10 al arco)** contra **10 tiros (5 al arco)** de Francia.\n* **El baile de los primeros 75':** Francia no pateó al arco hasta el minuto 67. Hasta el primer penal francés (minuto 79), Francia acumulaba apenas 2 remates aislados (0.15 xG acumulado) contra el dominio absoluto argentino (2-0, 10 remates y 1.55 xG).\n\n### El relato (*Final de la Copa Mundial de Fútbol de 2022*):\n* **El plan de juego:** Tácticamente, el planteo de Scaloni con Ángel Di María abierto por izquierda destrozó la estructura gala, al punto de que Didier Deschamps quemó dos cambios antes del entretiempo (sacó a Giroud y Dembélé).\n* **La ráfaga y el drama:** Francia revivió en 95 segundos (minutos 80 y 81) con un penal de Otamendi a Kolo Muani y una volea letal de Mbappé (tiro de apenas 0.10 xG).\n* **La cuota de destino:** En el alargue, tras el 3-2 de Messi y el 3-3 de penal de Mbappé, en el minuto 120+3' Emiliano \"Dibu\" Martínez le sacó con la pierna izquierda un mano a mano agónico a Kolo Muani (0.28 xG), antes de sellar la historia atajando en la tanda de penales.\n\nArgentina dominó el juego durante 80 minutos con autoridad táctica; lo que necesitó después fue temple y al Dibu para sobrevivir a la máxima jerarquía individual de Mbappé.",
+  "tool_ok": true,
+  "esperado": 1.97,
+  "valor_ok": true,
+  "articulo_ok": true
+ },
+ {
+  "pregunta": "¿Quién es el jugador más caro de la Premier y qué se sabe de su carrera?",
+  "tipo": "mixto",
+  "tools": [
+   "buscar_contexto",
+   "consultar_stats"
+  ],
+  "respuesta": "El jugador más valioso de la Premier League es **Erling Haaland** (Manchester City), con un valor de mercado de **200.000.000 €** (fuente: `dim_players`). En los registros de la base acumula 259 goles y 52 asistencias en 292 partidos de clubes.\n\n### Lo que se sabe de su carrera\n*(Fuente: artículo de Wikipedia «Erling Haaland»)*\n\n* **Orígenes:** Nació en Leeds (Inglaterra) en 2000 mientras su padre, Alf-Inge Håland, jugaba en la Premier, pero a los tres años se mudó a Noruega y representa a esa selección (de la que es máximo goleador histórico desde octubre de 2024).\n* **Inicios y despegue:** Se formó en el Bryne FK y debutó en primera con solo 15 años. Pasó al Molde FK bajo la dirección de Ole Gunnar Solskjær, y su salto internacional llegó con el Red Bull Salzburgo austríaco.\n* **Élite europea:** Explotó en el Borussia Dortmund (ganó el premio Golden Boy en 2020) y en 2022 lo compró el Manchester City, donde pulverizó récords goleadores de la liga inglesa y se consolidó como uno de los delanteros más dominantes del mundo.",
+  "tool_ok": true,
+  "esperado": "Erling Haaland",
+  "valor_ok": true,
+  "articulo_ok": true
+ }
+]

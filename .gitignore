@@ -23,3 +23,6 @@ logs/
 # Power BI (los .pbix pueden pesar mucho; subilos con Git LFS si querés versionarlos)
 *.pbix.bak
 
+
+# Streamlit (código del chat, keys)
+.streamlit/secrets.toml

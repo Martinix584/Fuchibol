@@ -2,7 +2,46 @@
 
 [![CI](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml/badge.svg)](https://github.com/martinix584/fuchibol/actions/workflows/ci.yml)
 
-**App:** <https://fuchibol-jqccimrmzhgzszr5ihoymg.streamlit.app/> (radar de jugadores, subvaluados, fichajes y mapa de tiros)
+**App:** <https://fuchibol-jqccimrmzhgzszr5ihoymg.streamlit.app/> (radar de jugadores, subvaluados, fichajes, mapa de
+tiros y **chat con un agente de IA**)
+
+## 💬 Probá el chat: agente de IA con SQL + RAG
+
+> ### 🔑 Código de acceso: `6796-57a7-85bf`
+>
+> Entrá a la [app](https://fuchibol-jqccimrmzhgzszr5ihoymg.streamlit.app/), abrí la pestaña **Chat** y pegá el código.
+
+Preguntas para arrancar:
+
+- *¿Argentina ganó la final del Mundial 2022 por suerte o por juego? Usá el xG y el relato.*
+- *¿Cuánto vale hoy Julián Álvarez y por qué se fue del Manchester City?*
+- *¿Quién es el jugador más subvaluado según el modelo?*
+
+Cada respuesta tiene un desplegable **"Cómo lo respondió"** con el SQL que corrió y lo que buscó en Wikipedia.
+
+**Cómo funciona**
+
+| Pieza | Qué hace |
+|---|---|
+| **Agente** ([`app/agente.py`](app/agente.py)) | LangChain v1 (`create_agent`) con **Gemini 3.8 Flash en Vertex AI**. Decide qué herramienta usar, o las dos, y cita la fuente de cada dato. |
+| **Tool SQL** ([`app/sql_tool.py`](app/sql_tool.py)) | SQL de solo lectura en DuckDB sobre los marts de este repo. Tiene tres capas de seguridad: un solo `SELECT` validado con sqlglot, DuckDB sin acceso a archivos ni red, y un tope de filas con timeout. El esquema del prompt se genera de los `.yml` de dbt. |
+| **RAG** ([`app/rag.py`](app/rag.py)) | 19.537 fragmentos de 2.486 artículos de Wikipedia en español (jugadores, clubes y torneos). Búsqueda **híbrida**: BM25 + embeddings `gemini-embedding-001`, fusionados con RRF. |
+| **Unión datos ↔ texto** ([`ingestion/wiki_corpus.py`](ingestion/wiki_corpus.py)) | Cada artículo se une a su `player_id`/`club_id` por **Wikidata** (ID de Transfermarkt, P2446/P7223) y no por nombre. Así el agente cruza stats y relato del mismo jugador sin confundir homónimos. |
+| **Memoria** | **Mem0**: si ponés tu nombre, recuerda tus preferencias (equipo, jugadores, ligas) entre visitas. |
+| **Costo** | Código de acceso, cupo de 30 preguntas por día (~1 USD como máximo), tope de pasos por pregunta y alerta de presupuesto en GCP. |
+
+**Evals** ([`evals/`](evals/)): 25 preguntas escritas a mano, cada una con su SQL de verdad o el artículo que se
+espera encontrar. Hay de tres tipos: solo SQL, solo Wikipedia y mixtas. Se corren con `python -m evals.correr`.
+
+| Métrica | Resultado |
+|---|---|
+| Eligió la herramienta correcta | 25/25 |
+| El número o nombre coincide con la consulta de verdad | 17/17 |
+| Recuperó el artículo correcto | 12/12 |
+
+<sub>Es una primera vara: las preguntas son directas y todavía no hay un juez que verifique que cada frase esté
+respaldada por la cita.</sub>
+
 
 Pipeline de datos de fútbol de punta a punta: **Python → GCS → BigQuery → dbt → scikit-learn → Airflow → Power BI**,
 con cuatro fuentes:
@@ -16,6 +55,9 @@ con cuatro fuentes:
   de las 5 grandes ligas. Corre a diario en Airflow.
 - **SofaScore** ([sofascore.com](https://www.sofascore.com)): xG/xA de la **Liga Profesional Argentina** y respaldo
   manual de las 5 grandes. Es opcional y se corre **localmente** con Playwright: no va en Airflow.
+- **Wikipedia en español** ([es.wikipedia.org](https://es.wikipedia.org), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es)):
+  texto de 2.486 artículos de jugadores, clubes y torneos para el RAG del agente (`data/rag/`). Cada fragmento
+  guarda la URL de su artículo.
 
 ## Qué responde
 
@@ -382,7 +424,10 @@ StatsBomb en una corrida: `{"statsbomb_scope": "core,big5_2015"}`.
 │   ├── smoke/                       # dbt en DuckDB con datos reales y sintéticos
 │   └── dags/                        # escenarios del DAG
 ├── powerbi/                         # guía del reporte y tema
-├── app/                             # Streamlit: radar, subvaluados, fichajes y tiros
+├── app/                             # Streamlit: radar, subvaluados, fichajes, tiros y chat
+│   ├── agente.py, sql_tool.py, rag.py, chat_tab.py   # agente de IA (Gemini + SQL + RAG + Mem0)
+├── evals/                           # evals del agente (preguntas + runner)
+├── data/rag/                        # corpus de Wikipedia + embeddings del RAG
 ├── data/parquet/                    # export de marts + ml para la app (gitignored)
 ├── docs/                            # plan y runbook del respaldo manual de xG
 ├── scripts/                         # ingesta manual, smoke, test del DAG, métricas, gráficos, export Parquet

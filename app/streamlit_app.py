@@ -9,6 +9,7 @@ No usa credenciales: lee los Parquet con DuckDB. Para publicarla, subí el repo
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import duckdb
@@ -17,7 +18,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-DATA = Path(__file__).resolve().parents[1] / "data" / "parquet"
+ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / "data" / "parquet"
+sys.path.insert(0, str(ROOT))  # Streamlit corre este archivo suelto: para importar app.*
+
+from app import chat_tab  # noqa: E402
 
 st.set_page_config(page_title="Fuchibol", page_icon="⚽", layout="wide")
 
@@ -79,16 +84,21 @@ def main() -> None:
     st.caption(
         "Datos: [Transfermarkt](https://github.com/dcaribou/transfermarkt-datasets) (CC0), "
         "[StatsBomb Open Data](https://github.com/statsbomb/open-data), "
-        "[Understat](https://understat.com) y [SofaScore](https://www.sofascore.com)."
+        "[Understat](https://understat.com), [SofaScore](https://www.sofascore.com) y, en el chat, "
+        "[Wikipedia en español](https://es.wikipedia.org) "
+        "([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es))."
     )
 
     if not (DATA / "marts").exists():
         st.error("Falta `data/parquet/`. Corré `make export-parquet` y volvé a abrir la app.")
         st.stop()
 
-    tab_players, tab_value, tab_transfers, tab_shots = st.tabs(
-        ["Jugadores", "Subvaluados", "Fichajes", "Mapa de tiros"]
+    tab_players, tab_value, tab_transfers, tab_shots, tab_chat = st.tabs(
+        ["Jugadores", "Subvaluados", "Fichajes", "Mapa de tiros", "Chat"]
     )
+
+    with tab_chat:
+        chat_tab.render()
 
     with tab_players:
         source = st.radio("Fuente", ["Temporada actual", "StatsBomb"], horizontal=True)
