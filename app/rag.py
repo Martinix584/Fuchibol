@@ -1,6 +1,7 @@
 """Búsqueda híbrida sobre data/rag/: BM25 + embeddings (Vertex), fusionados con RRF.
 
-    python -m app.rag indexar     # calcula data/rag/embeddings.npy (requiere credenciales de GCP)
+    python -m app.rag indexar     # embeddings.npy (requiere credenciales de GCP) + bm25.npz
+    python -m app.rag bm25        # solo bm25.npz (sin red)
 
 Las preguntas se embeben con el MISMO modelo que el índice: si cambia EMBED_MODEL, reindexar.
 """
@@ -12,6 +13,7 @@ import re
 import sys
 import time
 import unicodedata
+from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 
@@ -19,7 +21,6 @@ import numpy as np
 import pandas as pd
 from google import genai
 from google.genai import types
-from rank_bm25 import BM25Okapi
 
 RAG = Path(__file__).resolve().parents[1] / "data" / "rag"
 EMBED_MODEL = "gemini-embedding-001"
@@ -31,6 +32,66 @@ RRF_K = 60
 def _tokens(t: str) -> list[str]:
     t = unicodedata.normalize("NFKD", t.lower())
     return re.findall(r"\w+", "".join(c for c in t if not unicodedata.combining(c)))
+
+
+class BM25:
+    """BM25 Okapi (mismas fórmulas que rank_bm25) precalculado como listas invertidas en numpy.
+
+    Construirlo en Python tarda segundos acá y minutos en la CPU de Streamlit Cloud (y traba la app
+    entera por el GIL), así que se arma offline y en runtime solo se carga el .npz."""
+
+    def __init__(self, vocab: dict[str, int], indptr, docs, pesos, n_docs: int):
+        self.vocab, self.indptr, self.docs, self.pesos, self.n_docs = vocab, indptr, docs, pesos, n_docs
+
+    @classmethod
+    def construir(cls, corpus: list[list[str]], k1: float = 1.5, b: float = 0.75, eps: float = 0.25) -> BM25:
+        n_docs = len(corpus)
+        dl = np.array([len(d) for d in corpus], dtype=np.float64)
+        postings: dict[str, list[tuple[int, int]]] = {}
+        for i, d in enumerate(corpus):
+            for t, f in Counter(d).items():
+                postings.setdefault(t, []).append((i, f))
+        n = np.array([len(p) for p in postings.values()], dtype=np.float64)
+        idf = np.log((n_docs - n + 0.5) / (n + 0.5))
+        idf = np.where(idf < 0, eps * idf.mean(), idf)
+        indptr = np.concatenate([[0], np.cumsum(n)]).astype(np.int64)
+        docs = np.empty(indptr[-1], dtype=np.int32)
+        pesos = np.empty(indptr[-1], dtype=np.float32)
+        for k, p in enumerate(postings.values()):
+            ids, tf = np.array(p, dtype=np.int64).T
+            docs[indptr[k] : indptr[k + 1]] = ids
+            pesos[indptr[k] : indptr[k + 1]] = (
+                idf[k] * tf * (k1 + 1) / (tf + k1 * (1 - b + b * dl[ids] / dl.mean()))
+            )
+        return cls({t: k for k, t in enumerate(postings)}, indptr, docs, pesos, n_docs)
+
+    def get_scores(self, tokens: list[str]) -> np.ndarray:
+        s = np.zeros(self.n_docs, dtype=np.float32)
+        for t in tokens:
+            if (k := self.vocab.get(t)) is not None:
+                a, z = self.indptr[k], self.indptr[k + 1]
+                s[self.docs[a:z]] += self.pesos[a:z]
+        return s
+
+    def guardar(self, path: Path) -> None:
+        np.savez_compressed(
+            path,
+            vocab=np.array(list(self.vocab)),
+            indptr=self.indptr,
+            docs=self.docs,
+            pesos=self.pesos.astype(np.float16),
+            n_docs=self.n_docs,
+        )
+
+    @classmethod
+    def cargar(cls, path: Path) -> BM25:
+        z = np.load(path)
+        vocab = {t: k for k, t in enumerate(z["vocab"].tolist())}
+        return cls(vocab, z["indptr"], z["docs"], z["pesos"].astype(np.float32), int(z["n_docs"]))
+
+
+def _corpus(df: pd.DataFrame) -> list[list[str]]:
+    return [_tokens(f"{t} {s} {x}") for t, s, x in zip(df.title, df.section, df.text, strict=True)]
 
 
 @lru_cache(maxsize=1)
@@ -50,14 +111,18 @@ def embeber(textos: list[str], tarea: str = "RETRIEVAL_QUERY") -> np.ndarray:
 
 
 @lru_cache(maxsize=1)
-def indice() -> tuple[pd.DataFrame, np.ndarray | None, BM25Okapi]:
+def indice() -> tuple[pd.DataFrame, np.ndarray | None, BM25]:
     """Sin embeddings.npy (todavía no se indexó) la búsqueda queda solo con BM25."""
     df = pd.read_parquet(RAG / "chunks.parquet")
     emb = None
     if (RAG / "embeddings.npy").exists():
         emb = np.load(RAG / "embeddings.npy").astype(np.float32)
         assert len(df) == len(emb), "chunks y embeddings desalineados: reindexar"
-    bm25 = BM25Okapi([_tokens(f"{t} {s} {x}") for t, s, x in zip(df.title, df.section, df.text, strict=True)])
+    if (RAG / "bm25.npz").exists():
+        bm25 = BM25.cargar(RAG / "bm25.npz")
+        assert bm25.n_docs == len(df), "chunks y bm25 desalineados: python -m app.rag bm25"
+    else:
+        bm25 = BM25.construir(_corpus(df))
     return df, emb, bm25
 
 
@@ -100,7 +165,12 @@ def indexar(lote: int = 64) -> None:
         print(f"{min(i + lote, len(textos))}/{len(textos)}", flush=True)
     # float16: la mitad de peso en el repo, sin diferencia práctica para coseno
     np.save(RAG / "embeddings.npy", np.vstack(partes).astype(np.float16))
+    indexar_bm25()
 
 
-if __name__ == "__main__" and sys.argv[1:] == ["indexar"]:
-    indexar()
+def indexar_bm25() -> None:
+    BM25.construir(_corpus(pd.read_parquet(RAG / "chunks.parquet"))).guardar(RAG / "bm25.npz")
+
+
+if __name__ == "__main__":
+    {"indexar": indexar, "bm25": indexar_bm25}[sys.argv[1]]()

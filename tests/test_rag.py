@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from rank_bm25 import BM25Okapi
 
 from app import rag
 
@@ -24,7 +23,7 @@ def _fake(monkeypatch):
     )
     emb = np.eye(4, dtype=np.float32)
     filas = zip(df.title, df.section, df.text, strict=True)
-    bm25 = BM25Okapi([rag._tokens(f"{t} {s} {x}") for t, s, x in filas])
+    bm25 = rag.BM25.construir([rag._tokens(f"{t} {s} {x}") for t, s, x in filas])
     monkeypatch.setattr(rag, "indice", lambda: (df, emb, bm25))
     # la pregunta "cae" cerca del fragmento 1 en el espacio denso
     monkeypatch.setattr(rag, "embeber", lambda _: np.array([[0, 1, 0, 0]], dtype=np.float32))
@@ -51,3 +50,13 @@ def test_solo_bm25_sin_embeddings(monkeypatch):
     monkeypatch.setattr(rag, "indice", lambda: (df, None, bm25))
     monkeypatch.setattr(rag, "embeber", lambda _: (_ for _ in ()).throw(AssertionError("no debe llamarse")))
     assert rag.buscar("bombonera", k=1)[0]["url"] == "u4"
+
+
+def test_bm25_guardar_y_cargar(tmp_path):
+    corpus = [["messi", "barcelona"], ["boca", "bombonera", "boca"], ["river", "monumental"]]
+    bm = rag.BM25.construir(corpus)
+    bm.guardar(tmp_path / "b.npz")
+    otro = rag.BM25.cargar(tmp_path / "b.npz")
+    q = ["boca", "messi"]
+    assert abs(bm.get_scores(q) - otro.get_scores(q)).max() < 1e-2  # pesos guardados en float16
+    assert otro.get_scores(["boca"]).argmax() == 1
